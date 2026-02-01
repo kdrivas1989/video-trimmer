@@ -60,41 +60,45 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
 
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
 
-    if file and allowed_file(file.filename):
-        video_id = str(uuid.uuid4())
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{video_id}_{filename}")
-        file.save(filepath)
+        if file and allowed_file(file.filename):
+            video_id = str(uuid.uuid4())
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{video_id}_{filename}")
+            file.save(filepath)
 
-        # Try to get duration, but don't fail if it takes too long
-        try:
-            duration = get_video_duration(filepath)
-        except Exception:
-            duration = 0
+            # Try to get duration, but don't fail if it takes too long
+            try:
+                duration = get_video_duration(filepath)
+            except Exception:
+                duration = 0
 
-        videos[video_id] = {
-            'id': video_id,
-            'filename': filename,
-            'filepath': filepath,
-            'duration': duration,
-            'duration_str': seconds_to_timestamp(duration)
-        }
+            videos[video_id] = {
+                'id': video_id,
+                'filename': filename,
+                'filepath': filepath,
+                'duration': duration,
+                'duration_str': seconds_to_timestamp(duration)
+            }
 
-        return jsonify({
-            'id': video_id,
-            'filename': filename,
-            'duration': duration,
-            'duration_str': seconds_to_timestamp(duration)
-        })
+            return jsonify({
+                'id': video_id,
+                'filename': filename,
+                'duration': duration,
+                'duration_str': seconds_to_timestamp(duration)
+            })
 
-    return jsonify({'error': 'Invalid file type'}), 400
+        return jsonify({'error': 'Invalid file type'}), 400
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/trim', methods=['POST'])
