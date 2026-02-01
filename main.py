@@ -28,6 +28,8 @@ ALLOWED_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv', 'webm', 'mts'}
 # Ensure folders exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
+PREVIEW_FOLDER = str(APP_DATA_DIR / 'previews')
+os.makedirs(PREVIEW_FOLDER, exist_ok=True)
 
 # Store video info in memory (for demo purposes)
 videos = {}
@@ -102,8 +104,14 @@ def upload_file():
 
         return jsonify({'error': 'Invalid file type'}), 400
 
+    except OSError as e:
+        if e.errno == 28:
+            return jsonify({'error': 'No space left on device. Please free up disk space.'}), 500
+        elif e.errno == 13:
+            return jsonify({'error': f'Permission denied. Cannot write to: {app.config["UPLOAD_FOLDER"]}'}), 500
+        return jsonify({'error': f'OS Error [{e.errno}]: {str(e)}'}), 500
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': f'{type(e).__name__}: {str(e)}'}), 500
 
 
 @app.route('/trim', methods=['POST'])
@@ -119,6 +127,10 @@ def trim_video():
 
         video = videos[video_id]
 
+        # Check if source file exists
+        if not os.path.exists(video['filepath']):
+            return jsonify({'error': f"Source file not found: {video['filepath']}"}), 400
+
         start = timestamp_to_seconds(start_time)
         end = timestamp_to_seconds(end_time) if end_time else video['duration']
 
@@ -133,6 +145,9 @@ def trim_video():
             original_name = Path(video['filename']).stem
             output_name = f"{original_name}_trimmed.mp4"
         output_path = os.path.join(app.config['OUTPUT_FOLDER'], f"{video_id}_{output_name}")
+
+        # Ensure output directory exists
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
         with VideoFileClip(video['filepath']) as clip:
             trimmed = clip.subclipped(start, end)
@@ -153,8 +168,26 @@ def trim_video():
             'output_name': output_name
         })
 
+    except BrokenPipeError as e:
+        error_msg = f"Broken pipe error (errno 32): Video encoding was interrupted. This can happen if: (1) disk is full, (2) output folder is inaccessible, or (3) ffmpeg crashed. Source: {video.get('filepath', 'unknown')}"
+        return jsonify({'error': error_msg}), 500
+    except OSError as e:
+        if e.errno == 32:
+            error_msg = f"Broken pipe error (errno 32): Video encoding was interrupted. Source: {video.get('filepath', 'unknown')}. Check disk space and permissions."
+        elif e.errno == 28:
+            error_msg = "No space left on device. Please free up disk space and try again."
+        elif e.errno == 13:
+            error_msg = f"Permission denied. Cannot write to output folder: {app.config['OUTPUT_FOLDER']}"
+        else:
+            error_msg = f"OS Error [{e.errno}]: {str(e)}. File: {video.get('filepath', 'unknown')}"
+        return jsonify({'error': error_msg}), 500
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        error_details = f"{type(e).__name__}: {str(e)}"
+        # Include file path for debugging
+        if 'video' in locals():
+            error_details += f" | Source: {video.get('filepath', 'unknown')}"
+        return jsonify({'error': error_details}), 500
 
 
 @app.route('/download/<video_id>')
@@ -216,6 +249,57 @@ def serve_video(video_id):
     return send_file(filepath, mimetype=mimetype, conditional=True)
 
 
+@app.route('/preview/<video_id>')
+def get_preview(video_id):
+    """Generate and serve an H.264 preview for H.265/HEVC videos."""
+    if video_id not in videos:
+        return jsonify({'error': 'Video not found'}), 404
+
+    video = videos[video_id]
+    preview_path = os.path.join(PREVIEW_FOLDER, f"{video_id}_preview.mp4")
+
+    # Check if preview already exists
+    if os.path.exists(preview_path):
+        return send_file(preview_path, mimetype='video/mp4', conditional=True)
+
+    # Generate preview by transcoding to H.264
+    try:
+        with VideoFileClip(video['filepath']) as clip:
+            # Use a reasonable resolution for preview (max 720p)
+            if clip.h > 720:
+                resized = clip.resized(height=720)
+            else:
+                resized = clip
+
+            resized.write_videofile(
+                preview_path,
+                codec="libx264",
+                audio_codec="aac",
+                preset="ultrafast",
+                bitrate="2000k",
+                logger=None
+            )
+
+        video['preview_path'] = preview_path
+        return send_file(preview_path, mimetype='video/mp4', conditional=True)
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to generate preview: {str(e)}'}), 500
+
+
+@app.route('/preview/status/<video_id>')
+def preview_status(video_id):
+    """Check if a preview exists or needs to be generated."""
+    if video_id not in videos:
+        return jsonify({'error': 'Video not found'}), 404
+
+    preview_path = os.path.join(PREVIEW_FOLDER, f"{video_id}_preview.mp4")
+    return jsonify({
+        'exists': os.path.exists(preview_path),
+        'video_id': video_id
+    })
+
+
 @app.route('/delete/<video_id>', methods=['DELETE'])
 def delete_video(video_id):
     if video_id in videos:
@@ -225,6 +309,10 @@ def delete_video(video_id):
             os.remove(video['filepath'])
         if 'output_path' in video and os.path.exists(video['output_path']):
             os.remove(video['output_path'])
+        # Clean up preview file
+        preview_path = os.path.join(PREVIEW_FOLDER, f"{video_id}_preview.mp4")
+        if os.path.exists(preview_path):
+            os.remove(preview_path)
         del videos[video_id]
 
     return jsonify({'success': True})

@@ -71,9 +71,15 @@
             <video id="previewVideo" class="w-full bg-black rounded max-h-[40vh]" controls preload="metadata" playsinline>
                 Your browser does not support video playback.
             </video>
-            <p id="videoError" class="hidden text-orange-600 text-center text-xs mt-1 p-1 bg-orange-50 rounded">
-                Preview unavailable (H.265/HEVC codec). You can still set times manually and trim - output will be playable.
-            </p>
+            <div id="videoError" class="hidden text-center text-xs mt-1 p-2 bg-orange-50 rounded">
+                <p class="text-orange-600 mb-2">Preview unavailable (likely H.265/HEVC codec).</p>
+                <button onclick="generatePreview()" id="generatePreviewBtn" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded text-sm font-medium">
+                    Generate Playable Preview
+                </button>
+                <span id="previewLoading" class="hidden text-orange-600">
+                    <span class="inline-block animate-spin mr-1">⟳</span> Generating preview (this may take a moment)...
+                </span>
+            </div>
             <div class="mt-2 space-y-2">
                 <!-- Current time and trim duration inline -->
                 <div class="flex justify-center gap-6 text-sm">
@@ -110,6 +116,12 @@
                         <div class="text-xs text-gray-600">&nbsp;</div>
                     </div>
                     <div class="text-center">
+                        <button onclick="saveTimesOnly()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-1.5 rounded text-sm font-medium">
+                            Save Times
+                        </button>
+                        <div class="text-xs text-gray-600">&nbsp;</div>
+                    </div>
+                    <div class="text-center">
                         <button onclick="saveTimesAndClose()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm font-semibold">
                             Save & Trim
                         </button>
@@ -117,7 +129,7 @@
                     </div>
                 </div>
                 <div class="text-center text-xs text-gray-400">
-                    Keys: M/C/F/S/E, Space=Play, ←/→=Frame
+                    Keys: M/C/F/S/E, Space=Play, ←/→=Frame, Enter=Save Times
                 </div>
             </div>
         </div>
@@ -250,6 +262,14 @@
                             <div id="progressBar-${id}" class="progress-bar bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
                         </div>
                     </div>
+                    <div id="error-${id}" class="hidden mt-3">
+                        <div class="bg-red-50 border border-red-200 rounded p-2">
+                            <div class="flex justify-between items-start gap-2">
+                                <textarea id="errorText-${id}" readonly class="flex-1 text-xs text-red-700 bg-transparent resize-none font-mono" rows="2"></textarea>
+                                <button onclick="copyError('${id}')" class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded">Copy</button>
+                            </div>
+                        </div>
+                    </div>
                     <div id="download-${id}" class="hidden mt-3">
                         <a href="/download/${id}" class="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium">
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -273,6 +293,34 @@
             trimAllContainer.classList.toggle('hidden', Object.keys(videos).length === 0);
         }
 
+        function showError(id, errorMessage, statusDiv, card, errorDiv, errorText) {
+            statusDiv.textContent = 'Error (see details below)';
+            statusDiv.className = 'text-sm text-red-600 font-medium';
+            card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-red-500';
+            errorDiv.classList.remove('hidden');
+            errorText.value = errorMessage;
+            // Auto-resize textarea
+            errorText.style.height = 'auto';
+            errorText.style.height = Math.min(errorText.scrollHeight, 100) + 'px';
+        }
+
+        function copyError(id) {
+            const errorText = document.getElementById(`errorText-${id}`);
+            if (errorText) {
+                navigator.clipboard.writeText(errorText.value).then(() => {
+                    // Brief visual feedback
+                    const btn = errorText.parentElement.querySelector('button');
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => btn.textContent = originalText, 1000);
+                }).catch(() => {
+                    // Fallback for older browsers
+                    errorText.select();
+                    document.execCommand('copy');
+                });
+            }
+        }
+
         async function trimVideo(id) {
             const startInput = document.getElementById(`start-${id}`);
             const endInput = document.getElementById(`end-${id}`);
@@ -290,6 +338,9 @@
             progressDiv.classList.remove('hidden');
             downloadDiv.classList.add('hidden');
             progressBar.style.width = '30%';
+
+            const errorDiv = document.getElementById(`error-${id}`);
+            const errorText = document.getElementById(`errorText-${id}`);
 
             try {
                 const nameInput = document.getElementById(`name-${id}`);
@@ -317,6 +368,7 @@
                 if (response.ok) {
                     setTimeout(() => {
                         progressDiv.classList.add('hidden');
+                        errorDiv.classList.add('hidden');
                         downloadDiv.classList.remove('hidden');
 
                         // Calculate trimmed duration
@@ -330,15 +382,11 @@
                     }, 500);
                 } else {
                     progressDiv.classList.add('hidden');
-                    statusDiv.textContent = 'Error: ' + data.error;
-                    statusDiv.className = 'text-sm text-red-600 font-medium';
-                    card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-red-500';
+                    showError(id, data.error, statusDiv, card, errorDiv, errorText);
                 }
             } catch (error) {
                 progressDiv.classList.add('hidden');
-                statusDiv.textContent = 'Error: ' + error.message;
-                statusDiv.className = 'text-sm text-red-600 font-medium';
-                card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-red-500';
+                showError(id, error.message, statusDiv, card, errorDiv, errorText);
             }
         }
 
@@ -487,7 +535,7 @@
             return parseFloat(clean);
         }
 
-        function previewVideo(id) {
+        async function previewVideo(id) {
             currentPreviewId = id;
             const video = videos[id];
             // Get current filename from main card input (may have been edited)
@@ -498,7 +546,23 @@
             // Reset video element
             previewVideoEl.pause();
             previewVideoEl.currentTime = 0;
-            previewVideoEl.src = `/video/${id}`;
+
+            // Check if a preview already exists
+            try {
+                const statusRes = await fetch(`/preview/status/${id}`);
+                const status = await statusRes.json();
+                if (status.exists) {
+                    // Use existing preview
+                    previewVideoEl.src = `/preview/${id}`;
+                } else {
+                    // Try original video first
+                    previewVideoEl.src = `/video/${id}`;
+                }
+            } catch {
+                // Fallback to original video
+                previewVideoEl.src = `/video/${id}`;
+            }
+
             previewVideoEl.load();
 
             // Show current start/end values
@@ -547,9 +611,52 @@
         previewVideoEl.addEventListener('error', (e) => {
             // Only show error if there's actually an error with the video
             if (previewVideoEl.error) {
-                document.getElementById('videoError').classList.remove('hidden');
+                const errorDiv = document.getElementById('videoError');
+                const generateBtn = document.getElementById('generatePreviewBtn');
+                const loadingSpan = document.getElementById('previewLoading');
+
+                errorDiv.classList.remove('hidden');
+                generateBtn.classList.remove('hidden');
+                loadingSpan.classList.add('hidden');
             }
         });
+
+        async function generatePreview() {
+            if (!currentPreviewId) return;
+
+            const generateBtn = document.getElementById('generatePreviewBtn');
+            const loadingSpan = document.getElementById('previewLoading');
+
+            // Show loading state
+            generateBtn.classList.add('hidden');
+            loadingSpan.classList.remove('hidden');
+
+            try {
+                // Request the preview - this will transcode if needed
+                const response = await fetch(`/preview/${currentPreviewId}`);
+
+                if (response.ok) {
+                    // Load the preview video
+                    previewVideoEl.src = `/preview/${currentPreviewId}`;
+                    previewVideoEl.load();
+
+                    // Hide error div on successful load
+                    previewVideoEl.oncanplay = () => {
+                        document.getElementById('videoError').classList.add('hidden');
+                        previewVideoEl.play().catch(() => {});
+                    };
+                } else {
+                    const data = await response.json();
+                    alert('Failed to generate preview: ' + (data.error || 'Unknown error'));
+                    generateBtn.classList.remove('hidden');
+                    loadingSpan.classList.add('hidden');
+                }
+            } catch (error) {
+                alert('Failed to generate preview: ' + error.message);
+                generateBtn.classList.remove('hidden');
+                loadingSpan.classList.add('hidden');
+            }
+        }
 
         previewVideoEl.addEventListener('loadeddata', () => {
             document.getElementById('videoError').classList.add('hidden');
@@ -613,6 +720,31 @@
                 const endSecs = parseTimestamp(endInput.value);
                 const duration = Math.max(0, endSecs - startSecs);
                 document.getElementById('previewTrimDuration').textContent = formatTime(duration);
+            }
+        }
+
+        function saveTimesOnly() {
+            if (currentPreviewId) {
+                const id = currentPreviewId;
+                const startInput = document.getElementById(`start-${id}`);
+                const endInput = document.getElementById(`end-${id}`);
+                const statusDiv = document.getElementById(`status-${id}`);
+
+                // Calculate and show duration
+                const startSecs = parseTimestamp(startInput.value);
+                const endSecs = parseTimestamp(endInput.value);
+                const duration = formatTime(endSecs - startSecs);
+
+                statusDiv.textContent = `Times saved - Duration: ${duration}`;
+                statusDiv.className = 'text-sm text-blue-600 font-medium';
+
+                // Store that times were saved
+                if (videos[id]) {
+                    videos[id].timesSaved = true;
+                    videos[id].savedDuration = endSecs - startSecs;
+                }
+
+                closePreview();
             }
         }
 
@@ -729,6 +861,10 @@
                     previewVideoEl.pause();
                     const maxTime = previewVideoEl.duration || 9999;
                     previewVideoEl.currentTime = Math.min(maxTime, previewVideoEl.currentTime + FRAME_TIME);
+                    break;
+                case 'enter':
+                    e.preventDefault();
+                    saveTimesOnly();
                     break;
             }
         });
