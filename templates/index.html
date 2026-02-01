@@ -194,8 +194,13 @@
                     // Remove placeholder and add real card
                     removeVideoCard(tempId);
                     videos[data.id] = data;
-                    addVideoCard(data.id, data.filename, data.duration, data.duration_str, false);
+                    addVideoCard(data.id, data.filename, data.duration, data.duration_str, false, data.browser_playable);
                     updateTrimAllVisibility();
+
+                    // If not browser playable, poll for transcoding completion
+                    if (!data.browser_playable) {
+                        pollTranscodeStatus(data.id);
+                    }
                 } else {
                     removeVideoCard(tempId);
                     alert('Upload failed: ' + data.error);
@@ -208,7 +213,7 @@
 
         const videoListContainer = document.getElementById('videoListContainer');
 
-        function addVideoCard(id, filename, duration, durationStr, loading) {
+        function addVideoCard(id, filename, duration, durationStr, loading, browserPlayable = true) {
             // Show the container
             videoListContainer.classList.remove('hidden');
 
@@ -291,6 +296,41 @@
 
         function updateTrimAllVisibility() {
             trimAllContainer.classList.toggle('hidden', Object.keys(videos).length === 0);
+        }
+
+        function pollTranscodeStatus(id) {
+            const statusDiv = document.getElementById(`status-${id}`);
+            if (statusDiv) {
+                statusDiv.textContent = 'Transcoding for preview...';
+                statusDiv.className = 'text-sm text-purple-600 font-medium';
+            }
+
+            const checkStatus = async () => {
+                try {
+                    const res = await fetch(`/preview/status/${id}`);
+                    const data = await res.json();
+
+                    if (data.exists) {
+                        // Transcoding complete
+                        if (statusDiv) {
+                            statusDiv.textContent = 'Preview ready';
+                            statusDiv.className = 'text-sm text-green-600 font-medium';
+                        }
+                        if (videos[id]) {
+                            videos[id].preview_ready = true;
+                        }
+                    } else {
+                        // Still transcoding, check again in 3 seconds
+                        setTimeout(checkStatus, 3000);
+                    }
+                } catch (e) {
+                    // Retry on error
+                    setTimeout(checkStatus, 5000);
+                }
+            };
+
+            // Start polling after 2 seconds
+            setTimeout(checkStatus, 2000);
         }
 
         function showError(id, errorMessage, statusDiv, card, errorDiv, errorText) {
@@ -547,15 +587,22 @@
             previewVideoEl.pause();
             previewVideoEl.currentTime = 0;
 
-            // Check if a preview already exists
+            // Check if a preview already exists or if original is playable
             try {
                 const statusRes = await fetch(`/preview/status/${id}`);
                 const status = await statusRes.json();
-                if (status.exists) {
-                    // Use existing preview
+
+                if (status.use_preview) {
+                    // Use transcoded preview (not browser playable, preview exists)
+                    previewVideoEl.src = `/preview/${id}`;
+                } else if (status.browser_playable) {
+                    // Original is playable
+                    previewVideoEl.src = `/video/${id}`;
+                } else if (status.exists) {
+                    // Preview exists, use it
                     previewVideoEl.src = `/preview/${id}`;
                 } else {
-                    // Try original video first
+                    // Try original, will show transcode button if fails
                     previewVideoEl.src = `/video/${id}`;
                 }
             } catch {

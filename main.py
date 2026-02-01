@@ -3,6 +3,8 @@
 
 import os
 import uuid
+import subprocess
+import threading
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify, send_file
 from werkzeug.utils import secure_filename
@@ -38,6 +40,65 @@ os.makedirs(PREVIEW_FOLDER, exist_ok=True)
 
 # Store video info in memory (for demo purposes)
 videos = {}
+
+# Browser-playable codecs
+BROWSER_PLAYABLE_CODECS = {'h264', 'avc1', 'vp8', 'vp9', 'av1'}
+
+
+def get_video_codec(filepath):
+    """Get video codec using ffprobe."""
+    try:
+        result = subprocess.run([
+            'ffprobe', '-v', 'error',
+            '-select_streams', 'v:0',
+            '-show_entries', 'stream=codec_name',
+            '-of', 'default=noprint_wrappers=1:nokey=1',
+            filepath
+        ], capture_output=True, text=True, timeout=30)
+        return result.stdout.strip().lower()
+    except Exception:
+        return None
+
+
+def is_browser_playable(filepath):
+    """Check if video codec is playable in browsers."""
+    codec = get_video_codec(filepath)
+    if codec:
+        return codec in BROWSER_PLAYABLE_CODECS
+    # Assume playable if we can't detect
+    return True
+
+
+def transcode_for_browser(video_id, source_path):
+    """Transcode video to H.264 for browser playback (runs in background)."""
+    preview_path = os.path.join(PREVIEW_FOLDER, f"{video_id}_preview.mp4")
+
+    if os.path.exists(preview_path):
+        return  # Already transcoded
+
+    try:
+        with VideoFileClip(source_path) as clip:
+            # Use reasonable resolution for preview (max 720p)
+            if clip.h > 720:
+                resized = clip.resized(height=720)
+            else:
+                resized = clip
+
+            resized.write_videofile(
+                preview_path,
+                codec="libx264",
+                audio_codec="aac",
+                preset="ultrafast",
+                bitrate="2000k",
+                logger=None
+            )
+
+        # Update video entry if it exists
+        if video_id in videos:
+            videos[video_id]['preview_path'] = preview_path
+            videos[video_id]['preview_ready'] = True
+    except Exception as e:
+        print(f"Transcode failed for {video_id}: {e}")
 
 
 def allowed_file(filename):
@@ -92,19 +153,34 @@ def upload_file():
             # Duration will be read when previewing
             duration = 0
 
+            # Check if browser can play this codec
+            playable = is_browser_playable(filepath)
+
             videos[video_id] = {
                 'id': video_id,
                 'filename': filename,
                 'filepath': filepath,
                 'duration': duration,
-                'duration_str': seconds_to_timestamp(duration)
+                'duration_str': seconds_to_timestamp(duration),
+                'browser_playable': playable,
+                'preview_ready': False
             }
+
+            # Auto-transcode in background if not browser-playable
+            if not playable:
+                thread = threading.Thread(
+                    target=transcode_for_browser,
+                    args=(video_id, filepath)
+                )
+                thread.daemon = True
+                thread.start()
 
             return jsonify({
                 'id': video_id,
                 'filename': filename,
                 'duration': duration,
-                'duration_str': seconds_to_timestamp(duration)
+                'duration_str': seconds_to_timestamp(duration),
+                'browser_playable': playable
             })
 
         return jsonify({'error': 'Invalid file type'}), 400
@@ -322,9 +398,20 @@ def preview_status(video_id):
         return jsonify({'error': 'Video not found'}), 404
 
     preview_path = os.path.join(PREVIEW_FOLDER, f"{video_id}_preview.mp4")
+    preview_exists = os.path.exists(preview_path)
+
+    # Check if browser can play original
+    browser_playable = True
+    if video_id in videos:
+        browser_playable = videos[video_id].get('browser_playable', True)
+    else:
+        browser_playable = is_browser_playable(source_path)
+
     return jsonify({
-        'exists': os.path.exists(preview_path),
-        'video_id': video_id
+        'exists': preview_exists,
+        'video_id': video_id,
+        'browser_playable': browser_playable,
+        'use_preview': not browser_playable and preview_exists
     })
 
 
