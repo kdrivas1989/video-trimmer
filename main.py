@@ -116,9 +116,13 @@ def trim_video():
         if start >= end:
             return jsonify({'error': 'Start time must be before end time'}), 400
 
-        # Generate output path
-        original_name = Path(video['filename']).stem
-        output_name = f"{original_name}_trimmed.mp4"
+        # Generate output path with custom name if provided
+        custom_name = data.get('output_name', '').strip()
+        if custom_name:
+            output_name = f"{custom_name}.mp4"
+        else:
+            original_name = Path(video['filename']).stem
+            output_name = f"{original_name}_trimmed.mp4"
         output_path = os.path.join(app.config['OUTPUT_FOLDER'], f"{video_id}_{output_name}")
 
         with VideoFileClip(video['filepath']) as clip:

@@ -213,7 +213,8 @@
                 card.innerHTML = `
                     <div class="flex flex-wrap items-center gap-4">
                         <div class="flex-1 min-w-[200px]">
-                            <h3 class="font-medium text-gray-800 truncate" title="${filename}">${filename}</h3>
+                            <input type="text" id="name-${id}" value="${filename.replace(/\.[^/.]+$/, '')}"
+                                class="font-medium text-gray-800 w-full border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none bg-transparent" title="Click to rename">
                             <p class="text-sm text-gray-500">Duration: ${durationStr}</p>
                             <p id="status-${id}" class="text-sm text-green-600 font-medium">Ready</p>
                         </div>
@@ -292,13 +293,15 @@
             progressBar.style.width = '30%';
 
             try {
+                const nameInput = document.getElementById(`name-${id}`);
                 const response = await fetch('/trim', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         id: id,
                         start: startInput.value,
-                        end: endInput.value
+                        end: endInput.value,
+                        output_name: nameInput.value
                     })
                 });
 
