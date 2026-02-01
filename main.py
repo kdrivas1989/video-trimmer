@@ -40,23 +40,17 @@ def get_video_duration(filepath):
 
 
 def seconds_to_timestamp(seconds):
-    """Convert seconds to HH:MM:SS.mmm format."""
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    secs = int(seconds % 60)
+    """Convert seconds to SS.mmm format."""
+    total_secs = int(seconds)
     ms = int((seconds % 1) * 1000)
-    return f"{hours:02d}:{minutes:02d}:{secs:02d}.{ms:03d}"
+    return f"{total_secs}.{ms:03d}s"
 
 
 def timestamp_to_seconds(timestamp):
-    """Convert HH:MM:SS.mmm or MM:SS.mmm format to seconds."""
-    parts = timestamp.strip().split(":")
-    if len(parts) == 3:
-        return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
-    elif len(parts) == 2:
-        return int(parts[0]) * 60 + float(parts[1])
-    else:
-        return float(parts[0])
+    """Convert SS.mmm format to seconds."""
+    # Remove 's' suffix if present
+    clean = timestamp.strip().rstrip('s')
+    return float(clean)
 
 
 @app.route('/')

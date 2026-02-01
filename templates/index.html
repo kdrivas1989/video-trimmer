@@ -83,21 +83,21 @@
                         <button onclick="setStartFromPlayer()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition font-semibold">
                             Set Start [S]
                         </button>
-                        <div class="mt-1 text-sm text-gray-600">Start: <span id="previewStart" class="font-mono">00:00:00.000</span></div>
+                        <div class="mt-1 text-sm text-gray-600">Start: <span id="previewStart" class="font-mono">0.000s</span></div>
                         <button onclick="jumpToStart()" class="mt-1 text-xs text-green-600 hover:text-green-800 underline">Jump to Start</button>
                     </div>
                     <div class="text-center">
                         <button onclick="setEndFromPlayer()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg transition font-semibold">
                             Set End [E]
                         </button>
-                        <div class="mt-1 text-sm text-gray-600">End: <span id="previewEnd" class="font-mono">--:--:--.---</span></div>
+                        <div class="mt-1 text-sm text-gray-600">End: <span id="previewEnd" class="font-mono">--.---s</span></div>
                         <button onclick="jumpToEnd()" class="mt-1 text-xs text-red-600 hover:text-red-800 underline">Jump to End</button>
                     </div>
                 </div>
                 <!-- Trim duration display -->
                 <div class="text-center">
                     <span class="text-sm text-gray-500">Trim Duration: </span>
-                    <span id="previewTrimDuration" class="font-mono text-lg font-semibold text-blue-600">00:00:00.000</span>
+                    <span id="previewTrimDuration" class="font-mono text-lg font-semibold text-blue-600">0.000s</span>
                 </div>
                 <!-- Save button -->
                 <div class="text-center">
@@ -212,13 +212,13 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <label class="text-sm text-gray-600">Start:</label>
-                            <input type="text" id="start-${id}" value="00:00:00.000"
-                                class="border rounded px-2 py-1 w-32 text-sm font-mono" placeholder="00:00:00.000">
+                            <input type="text" id="start-${id}" value="0.000s"
+                                class="border rounded px-2 py-1 w-32 text-sm font-mono" placeholder="0.000s">
                         </div>
                         <div class="flex items-center gap-2">
                             <label class="text-sm text-gray-600">End:</label>
                             <input type="text" id="end-${id}" value="${durationStr}"
-                                class="border rounded px-2 py-1 w-32 text-sm font-mono" placeholder="00:00:00.000">
+                                class="border rounded px-2 py-1 w-32 text-sm font-mono" placeholder="0.000s">
                         </div>
                         <div class="flex gap-2">
                             <button onclick="previewVideo('${id}')" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1 rounded text-sm transition">
@@ -361,21 +361,15 @@
         let currentPreviewId = null;
 
         function formatTime(seconds) {
-            const hrs = Math.floor(seconds / 3600);
-            const mins = Math.floor((seconds % 3600) / 60);
-            const secs = Math.floor(seconds % 60);
+            const totalSecs = Math.floor(seconds);
             const ms = Math.floor((seconds % 1) * 1000);
-            return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+            return `${totalSecs}.${ms.toString().padStart(3, '0')}s`;
         }
 
         function parseTimestamp(timestamp) {
-            const parts = timestamp.split(':');
-            if (parts.length === 3) {
-                return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseFloat(parts[2]);
-            } else if (parts.length === 2) {
-                return parseInt(parts[0]) * 60 + parseFloat(parts[1]);
-            }
-            return parseFloat(timestamp);
+            // Remove 's' suffix if present
+            const clean = timestamp.replace('s', '');
+            return parseFloat(clean);
         }
 
         function previewVideo(id) {
