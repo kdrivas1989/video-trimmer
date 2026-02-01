@@ -78,7 +78,8 @@
                 <!-- Current time and trim duration inline -->
                 <div class="flex justify-center gap-6 text-sm">
                     <div><span class="text-gray-500">Current:</span> <span id="currentTime" class="font-mono font-semibold">0.000s</span></div>
-                    <div><span class="text-gray-500">Duration:</span> <span id="previewTrimDuration" class="font-mono font-semibold text-blue-600">0.000s</span></div>
+                    <div><span class="text-gray-500">Total:</span> <span id="videoDuration" class="font-mono font-semibold text-gray-600">--</span></div>
+                    <div><span class="text-gray-500">Trim:</span> <span id="previewTrimDuration" class="font-mono font-semibold text-blue-600">0.000s</span></div>
                 </div>
                 <!-- All buttons in one row -->
                 <div class="flex flex-wrap gap-2 items-start justify-center">
@@ -507,6 +508,23 @@
             previewEndDisplay.textContent = endInput.value;
 
             previewModal.classList.add('active');
+
+            // Fetch video duration from server (works even if preview doesn't)
+            fetch(`/duration/${id}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.duration > 0) {
+                        // Update end time if it's still at 0
+                        if (endInput.value === '0.000s' || endInput.value === '0s') {
+                            endInput.value = data.duration_str;
+                            previewEndDisplay.textContent = data.duration_str;
+                        }
+                        // Show duration in the current time display area
+                        document.getElementById('videoDuration').textContent = data.duration_str;
+                        updateTrimDuration();
+                    }
+                })
+                .catch(() => {});
 
             // Try to play, but don't fail if autoplay is blocked
             previewVideoEl.play().catch(() => {});

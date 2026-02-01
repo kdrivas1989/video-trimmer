@@ -173,6 +173,26 @@ def download_video(video_id):
     )
 
 
+@app.route('/duration/<video_id>')
+def get_duration(video_id):
+    """Get video duration (reads from file if not cached)."""
+    if video_id not in videos:
+        return jsonify({'error': 'Video not found'}), 404
+
+    video = videos[video_id]
+
+    # Get duration if not already cached or is 0
+    if video.get('duration', 0) == 0:
+        duration = get_video_duration(video['filepath'])
+        video['duration'] = duration
+        video['duration_str'] = seconds_to_timestamp(duration)
+
+    return jsonify({
+        'duration': video['duration'],
+        'duration_str': video['duration_str']
+    })
+
+
 @app.route('/video/<video_id>')
 def serve_video(video_id):
     if video_id not in videos:
