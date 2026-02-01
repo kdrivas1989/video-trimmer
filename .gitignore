@@ -29,3 +29,8 @@ uploads/
 *.mov
 *.mts
 *TEMP_MPY*
+
+# PyInstaller
+build/
+dist/
+*.spec
