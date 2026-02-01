@@ -220,12 +220,15 @@
                             <input type="text" id="end-${id}" value="${durationStr}"
                                 class="border rounded px-2 py-1 w-32 text-sm font-mono" placeholder="0.000s">
                         </div>
-                        <div class="flex gap-2">
+                        <div class="flex gap-2 flex-wrap">
                             <button onclick="previewVideo('${id}')" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1 rounded text-sm transition">
                                 Preview
                             </button>
                             <button onclick="trimVideo('${id}')" id="trimBtn-${id}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded text-sm transition">
                                 Trim
+                            </button>
+                            <button onclick="missedEntry('${id}')" id="missedBtn-${id}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-1 rounded text-sm transition">
+                                Missed Entry
                             </button>
                             <button onclick="deleteVideo('${id}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded text-sm transition">
                                 Remove
@@ -334,6 +337,34 @@
                 card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-red-500';
                 trimBtn.disabled = false;
                 trimBtn.className = 'bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded text-sm transition';
+            }
+        }
+
+        function missedEntry(id) {
+            const statusDiv = document.getElementById(`status-${id}`);
+            const card = document.getElementById(`card-${id}`);
+            const trimBtn = document.getElementById(`trimBtn-${id}`);
+            const missedBtn = document.getElementById(`missedBtn-${id}`);
+            const downloadDiv = document.getElementById(`download-${id}`);
+
+            // Update status
+            statusDiv.textContent = 'Missed Entry - Duration: 0.000s';
+            statusDiv.className = 'text-sm text-yellow-600 font-medium';
+            card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-yellow-500';
+
+            // Disable buttons
+            trimBtn.disabled = true;
+            trimBtn.className = 'bg-gray-400 text-white px-4 py-1 rounded text-sm cursor-not-allowed';
+            missedBtn.disabled = true;
+            missedBtn.className = 'bg-gray-400 text-white px-4 py-1 rounded text-sm cursor-not-allowed';
+
+            // Hide download
+            downloadDiv.classList.add('hidden');
+
+            // Store missed entry state
+            if (videos[id]) {
+                videos[id].missedEntry = true;
+                videos[id].trimmedDuration = 0;
             }
         }
 
