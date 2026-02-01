@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Trimmer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .dropzone {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.2s;
+        }
+        .dropzone.dragover {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        .progress-bar {
+            transition: width 0.3s;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 50;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.active {
+            display: flex;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">Video Trimmer</h1>
+
+        <!-- Upload Area -->
+        <div id="dropzone" class="dropzone bg-white rounded-lg p-8 mb-6 text-center cursor-pointer">
+            <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <p class="text-gray-600 mb-2">Drop video files here</p>
+            <p class="text-sm text-gray-400 mb-4">MP4, AVI, MOV, MKV, WMV, FLV, WebM, MTS</p>
+            <input type="file" id="fileInput" multiple accept=".mp4,.avi,.mov,.mkv,.wmv,.flv,.webm,.mts,.MTS,video/*"
+                onchange="handleFileSelect(this.files)"
+                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer cursor-pointer">
+        </div>
+
+        <!-- Video List -->
+        <div id="videoListContainer" class="hidden">
+            <h2 class="text-lg font-semibold text-gray-700 mb-3">Videos</h2>
+            <div id="videoList" class="space-y-3"></div>
+        </div>
+
+        <!-- Trim All Button -->
+        <div id="trimAllContainer" class="hidden mt-6 text-center">
+            <button id="trimAllBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition">
+                Trim All Videos
+            </button>
+        </div>
+    </div>
+
+    <!-- Video Preview Modal -->
+    <div id="previewModal" class="modal">
+        <div class="bg-white rounded-lg p-4 max-w-4xl w-full mx-4 max-h-[90vh] overflow-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="previewTitle" class="text-lg font-semibold text-gray-800"></h3>
+                <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <video id="previewVideo" class="w-full bg-black rounded" controls>
+                Your browser does not support video playback.
+            </video>
+            <div class="mt-4 space-y-4">
+                <div class="flex flex-wrap gap-6 items-center justify-center">
+                    <div class="text-center">
+                        <div class="text-xs text-gray-500 mb-1">CURRENT TIME</div>
+                        <div id="currentTime" class="font-mono text-2xl text-gray-800">00:00:00</div>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-4 items-center justify-center">
+                    <div class="text-center">
+                        <button onclick="setStartFromPlayer()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition font-semibold">
+                            Set Start [S]
+                        </button>
+                        <div class="mt-1 text-sm text-gray-600">Start: <span id="previewStart" class="font-mono">00:00:00.000</span></div>
+                        <button onclick="jumpToStart()" class="mt-1 text-xs text-green-600 hover:text-green-800 underline">Jump to Start</button>
+                    </div>
+                    <div class="text-center">
+                        <button onclick="setEndFromPlayer()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg transition font-semibold">
+                            Set End [E]
+                        </button>
+                        <div class="mt-1 text-sm text-gray-600">End: <span id="previewEnd" class="font-mono">--:--:--.---</span></div>
+                        <button onclick="jumpToEnd()" class="mt-1 text-xs text-red-600 hover:text-red-800 underline">Jump to End</button>
+                    </div>
+                </div>
+                <!-- Trim duration display -->
+                <div class="text-center">
+                    <span class="text-sm text-gray-500">Trim Duration: </span>
+                    <span id="previewTrimDuration" class="font-mono text-lg font-semibold text-blue-600">00:00:00.000</span>
+                </div>
+                <!-- Save button -->
+                <div class="text-center">
+                    <button onclick="saveTimesAndClose()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg transition font-semibold">
+                        Save & Trim
+                    </button>
+                </div>
+                <div class="text-center text-xs text-gray-400">
+                    Keyboard: <span class="font-mono bg-gray-100 px-1 rounded">S</span> = Set Start,
+                    <span class="font-mono bg-gray-100 px-1 rounded">E</span> = Set End,
+                    <span class="font-mono bg-gray-100 px-1 rounded">Space</span> = Play/Pause,
+                    <span class="font-mono bg-gray-100 px-1 rounded">←</span> / <span class="font-mono bg-gray-100 px-1 rounded">→</span> = Frame step (when paused)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const videoList = document.getElementById('videoList');
+        const trimAllContainer = document.getElementById('trimAllContainer');
+        const trimAllBtn = document.getElementById('trimAllBtn');
+
+        let videos = {};
+
+        // Drag and drop handlers
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            handleFileSelect(e.dataTransfer.files);
+        });
+
+        function handleFileSelect(files) {
+            console.log('Files selected:', files.length);
+            for (const file of files) {
+                console.log('Uploading:', file.name);
+                uploadFile(file);
+            }
+            fileInput.value = ''; // Reset so same file can be selected again
+        }
+
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Create placeholder card
+            const tempId = 'temp-' + Date.now();
+            addVideoCard(tempId, file.name, 0, '00:00:00', true);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Remove placeholder and add real card
+                    removeVideoCard(tempId);
+                    videos[data.id] = data;
+                    addVideoCard(data.id, data.filename, data.duration, data.duration_str, false);
+                    updateTrimAllVisibility();
+                } else {
+                    removeVideoCard(tempId);
+                    alert('Upload failed: ' + data.error);
+                }
+            } catch (error) {
+                removeVideoCard(tempId);
+                alert('Upload failed: ' + error.message);
+            }
+        }
+
+        const videoListContainer = document.getElementById('videoListContainer');
+
+        function addVideoCard(id, filename, duration, durationStr, loading) {
+            // Show the container
+            videoListContainer.classList.remove('hidden');
+
+            const card = document.createElement('div');
+            card.id = `card-${id}`;
+            card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-blue-500';
+
+            if (loading) {
+                card.className += ' border-yellow-500';
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
+                            <span class="text-gray-700 font-medium">${filename}</span>
+                        </div>
+                        <span class="text-sm text-yellow-600 font-medium">Uploading...</span>
+                    </div>
+                `;
+            } else {
+                card.innerHTML = `
+                    <div class="flex flex-wrap items-center gap-4">
+                        <div class="flex-1 min-w-[200px]">
+                            <h3 class="font-medium text-gray-800 truncate" title="${filename}">${filename}</h3>
+                            <p class="text-sm text-gray-500">Duration: ${durationStr}</p>
+                            <p id="status-${id}" class="text-sm text-green-600 font-medium">Ready</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm text-gray-600">Start:</label>
+                            <input type="text" id="start-${id}" value="00:00:00.000"
+                                class="border rounded px-2 py-1 w-32 text-sm font-mono" placeholder="00:00:00.000">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm text-gray-600">End:</label>
+                            <input type="text" id="end-${id}" value="${durationStr}"
+                                class="border rounded px-2 py-1 w-32 text-sm font-mono" placeholder="00:00:00.000">
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="previewVideo('${id}')" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1 rounded text-sm transition">
+                                Preview
+                            </button>
+                            <button onclick="trimVideo('${id}')" id="trimBtn-${id}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded text-sm transition">
+                                Trim
+                            </button>
+                            <button onclick="deleteVideo('${id}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded text-sm transition">
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                    <div id="progress-${id}" class="hidden mt-3">
+                        <div class="bg-gray-200 rounded-full h-2">
+                            <div id="progressBar-${id}" class="progress-bar bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div id="download-${id}" class="hidden mt-3">
+                        <a href="/download/${id}" class="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                            </svg>
+                            Download trimmed video
+                        </a>
+                    </div>
+                `;
+            }
+
+            videoList.appendChild(card);
+        }
+
+        function removeVideoCard(id) {
+            const card = document.getElementById(`card-${id}`);
+            if (card) card.remove();
+        }
+
+        function updateTrimAllVisibility() {
+            trimAllContainer.classList.toggle('hidden', Object.keys(videos).length === 0);
+        }
+
+        async function trimVideo(id) {
+            const startInput = document.getElementById(`start-${id}`);
+            const endInput = document.getElementById(`end-${id}`);
+            const progressDiv = document.getElementById(`progress-${id}`);
+            const progressBar = document.getElementById(`progressBar-${id}`);
+            const downloadDiv = document.getElementById(`download-${id}`);
+            const statusDiv = document.getElementById(`status-${id}`);
+            const trimBtn = document.getElementById(`trimBtn-${id}`);
+            const card = document.getElementById(`card-${id}`);
+
+            // Update status
+            statusDiv.textContent = 'Trimming...';
+            statusDiv.className = 'text-sm text-blue-600 font-medium';
+            card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-blue-500';
+            trimBtn.disabled = true;
+            trimBtn.className = 'bg-gray-400 text-white px-4 py-1 rounded text-sm cursor-not-allowed';
+
+            progressDiv.classList.remove('hidden');
+            downloadDiv.classList.add('hidden');
+            progressBar.style.width = '30%';
+
+            try {
+                const response = await fetch('/trim', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: id,
+                        start: startInput.value,
+                        end: endInput.value
+                    })
+                });
+
+                progressBar.style.width = '100%';
+                const data = await response.json();
+
+                if (response.ok) {
+                    setTimeout(() => {
+                        progressDiv.classList.add('hidden');
+                        downloadDiv.classList.remove('hidden');
+
+                        // Calculate trimmed duration
+                        const startSecs = parseTimestamp(startInput.value);
+                        const endSecs = parseTimestamp(endInput.value);
+                        const trimmedDuration = formatTime(endSecs - startSecs);
+
+                        statusDiv.textContent = `Complete - Duration: ${trimmedDuration}`;
+                        statusDiv.className = 'text-sm text-green-600 font-medium';
+                        card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-green-500';
+                        trimBtn.textContent = 'Trim Again';
+                        trimBtn.disabled = false;
+                        trimBtn.className = 'bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded text-sm transition';
+                    }, 500);
+                } else {
+                    progressDiv.classList.add('hidden');
+                    statusDiv.textContent = 'Error: ' + data.error;
+                    statusDiv.className = 'text-sm text-red-600 font-medium';
+                    card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-red-500';
+                    trimBtn.disabled = false;
+                    trimBtn.className = 'bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded text-sm transition';
+                }
+            } catch (error) {
+                progressDiv.classList.add('hidden');
+                statusDiv.textContent = 'Error: ' + error.message;
+                statusDiv.className = 'text-sm text-red-600 font-medium';
+                card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-red-500';
+                trimBtn.disabled = false;
+                trimBtn.className = 'bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded text-sm transition';
+            }
+        }
+
+        async function deleteVideo(id) {
+            try {
+                await fetch(`/delete/${id}`, { method: 'DELETE' });
+                delete videos[id];
+                removeVideoCard(id);
+                updateTrimAllVisibility();
+                // Hide container if no videos left
+                if (Object.keys(videos).length === 0) {
+                    videoListContainer.classList.add('hidden');
+                }
+            } catch (error) {
+                alert('Delete failed: ' + error.message);
+            }
+        }
+
+        trimAllBtn.addEventListener('click', async () => {
+            for (const id of Object.keys(videos)) {
+                await trimVideo(id);
+            }
+        });
+
+        // Preview functionality
+        const previewModal = document.getElementById('previewModal');
+        const previewVideoEl = document.getElementById('previewVideo');
+        const previewTitle = document.getElementById('previewTitle');
+        const currentTimeDisplay = document.getElementById('currentTime');
+        const previewStartDisplay = document.getElementById('previewStart');
+        const previewEndDisplay = document.getElementById('previewEnd');
+        let currentPreviewId = null;
+
+        function formatTime(seconds) {
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            const ms = Math.floor((seconds % 1) * 1000);
+            return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+        }
+
+        function parseTimestamp(timestamp) {
+            const parts = timestamp.split(':');
+            if (parts.length === 3) {
+                return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseFloat(parts[2]);
+            } else if (parts.length === 2) {
+                return parseInt(parts[0]) * 60 + parseFloat(parts[1]);
+            }
+            return parseFloat(timestamp);
+        }
+
+        function previewVideo(id) {
+            currentPreviewId = id;
+            const video = videos[id];
+            previewTitle.textContent = video.filename;
+            previewVideoEl.src = `/video/${id}`;
+
+            // Show current start/end values
+            const startInput = document.getElementById(`start-${id}`);
+            const endInput = document.getElementById(`end-${id}`);
+            previewStartDisplay.textContent = startInput.value;
+            previewEndDisplay.textContent = endInput.value;
+
+            previewModal.classList.add('active');
+            previewVideoEl.play();
+
+            // Update trim duration display
+            updateTrimDuration();
+        }
+
+        function closePreview() {
+            previewModal.classList.remove('active');
+            previewVideoEl.pause();
+            previewVideoEl.src = '';
+            currentPreviewId = null;
+        }
+
+        previewVideoEl.addEventListener('timeupdate', () => {
+            currentTimeDisplay.textContent = formatTime(previewVideoEl.currentTime);
+        });
+
+        function setStartFromPlayer() {
+            if (currentPreviewId) {
+                const time = formatTime(previewVideoEl.currentTime);
+                const startInput = document.getElementById(`start-${currentPreviewId}`);
+                startInput.value = time;
+                previewStartDisplay.textContent = time;
+
+                // Flash feedback
+                previewStartDisplay.classList.add('text-green-600', 'font-bold');
+                setTimeout(() => previewStartDisplay.classList.remove('text-green-600', 'font-bold'), 300);
+
+                updateTrimDuration();
+            }
+        }
+
+        function setEndFromPlayer() {
+            if (currentPreviewId) {
+                const time = formatTime(previewVideoEl.currentTime);
+                const endInput = document.getElementById(`end-${currentPreviewId}`);
+                endInput.value = time;
+                previewEndDisplay.textContent = time;
+
+                // Flash feedback
+                previewEndDisplay.classList.add('text-red-600', 'font-bold');
+                setTimeout(() => previewEndDisplay.classList.remove('text-red-600', 'font-bold'), 300);
+
+                updateTrimDuration();
+            }
+        }
+
+        function jumpToStart() {
+            if (currentPreviewId) {
+                const startInput = document.getElementById(`start-${currentPreviewId}`);
+                const startSecs = parseTimestamp(startInput.value);
+                previewVideoEl.currentTime = startSecs;
+            }
+        }
+
+        function jumpToEnd() {
+            if (currentPreviewId) {
+                const endInput = document.getElementById(`end-${currentPreviewId}`);
+                const endSecs = parseTimestamp(endInput.value);
+                previewVideoEl.currentTime = endSecs;
+            }
+        }
+
+        function updateTrimDuration() {
+            if (currentPreviewId) {
+                const startInput = document.getElementById(`start-${currentPreviewId}`);
+                const endInput = document.getElementById(`end-${currentPreviewId}`);
+                const startSecs = parseTimestamp(startInput.value);
+                const endSecs = parseTimestamp(endInput.value);
+                const duration = Math.max(0, endSecs - startSecs);
+                document.getElementById('previewTrimDuration').textContent = formatTime(duration);
+            }
+        }
+
+        function saveTimesAndClose() {
+            const idToTrim = currentPreviewId;
+            closePreview();
+            // Auto trim after closing
+            if (idToTrim) {
+                trimVideo(idToTrim);
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closePreview();
+                return;
+            }
+
+            // Only handle shortcuts when modal is open and not typing in an input
+            if (!previewModal.classList.contains('active')) return;
+            if (e.target.tagName === 'INPUT') return;
+
+            const FRAME_TIME = 1/30; // ~30fps, one frame ≈ 0.033 seconds
+
+            switch(e.key.toLowerCase()) {
+                case 's':
+                    e.preventDefault();
+                    setStartFromPlayer();
+                    break;
+                case 'e':
+                    e.preventDefault();
+                    setEndFromPlayer();
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    if (previewVideoEl.paused) {
+                        previewVideoEl.play();
+                    } else {
+                        previewVideoEl.pause();
+                    }
+                    break;
+                case 'arrowleft':
+                    e.preventDefault();
+                    if (previewVideoEl.paused) {
+                        previewVideoEl.currentTime = Math.max(0, previewVideoEl.currentTime - FRAME_TIME);
+                    }
+                    break;
+                case 'arrowright':
+                    e.preventDefault();
+                    if (previewVideoEl.paused) {
+                        previewVideoEl.currentTime = Math.min(previewVideoEl.duration, previewVideoEl.currentTime + FRAME_TIME);
+                    }
+                    break;
+            }
+        });
+
+        // Close modal on backdrop click
+        previewModal.addEventListener('click', (e) => {
+            if (e.target === previewModal) closePreview();
+        });
+    </script>
+</body>
+</html>
