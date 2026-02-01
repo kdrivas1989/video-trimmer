@@ -411,7 +411,7 @@
                         duration = formatTime(endSecs - startSecs) + '*';
                     }
                     status = 'Flagged for Review';
-                    g1Judgement = 'Review Required';
+                    g1Judgement = '';
                 } else if (statusDiv && statusDiv.textContent.includes('Complete')) {
                     const startSecs = parseTimestamp(start);
                     const endSecs = parseTimestamp(end);
