@@ -239,7 +239,12 @@ def trim_video():
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
         with VideoFileClip(video['filepath']) as clip:
-            trimmed = clip.subclipped(start, end)
+            # Add 2 second buffer before and after (within video bounds)
+            buffer_seconds = 2
+            actual_start = max(0, start - buffer_seconds)
+            actual_end = min(clip.duration, end + buffer_seconds)
+
+            trimmed = clip.subclipped(actual_start, actual_end)
             trimmed.write_videofile(
                 output_path,
                 codec="libx264",
