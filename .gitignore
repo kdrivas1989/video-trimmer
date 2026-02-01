@@ -21,4 +21,11 @@ Thumbs.db
 
 # Project
 output/
+uploads/
 *.log
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.mts
+*TEMP_MPY*
