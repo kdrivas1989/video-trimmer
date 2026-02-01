@@ -68,11 +68,11 @@
                 <input type="text" id="previewFilename" class="flex-1 text-sm font-semibold text-gray-800 border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-blue-500" />
                 <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-xl">&times;</button>
             </div>
-            <video id="previewVideo" class="w-full bg-black rounded max-h-[40vh]" controls preload="auto">
+            <video id="previewVideo" class="w-full bg-black rounded max-h-[40vh]" controls preload="metadata" playsinline>
                 Your browser does not support video playback.
             </video>
-            <p id="videoError" class="hidden text-red-500 text-center text-xs mt-1 p-1 bg-red-50 rounded">
-                Video format not supported. You can still set times and trim.
+            <p id="videoError" class="hidden text-orange-600 text-center text-xs mt-1 p-1 bg-orange-50 rounded">
+                Preview unavailable (H.265/HEVC codec). You can still set times manually and trim - output will be playable.
             </p>
             <div class="mt-2 space-y-2">
                 <!-- Current time and trim duration inline -->
@@ -526,11 +526,18 @@
             currentTimeDisplay.textContent = formatTime(previewVideoEl.currentTime);
         });
 
-        previewVideoEl.addEventListener('error', () => {
-            document.getElementById('videoError').classList.remove('hidden');
+        previewVideoEl.addEventListener('error', (e) => {
+            // Only show error if there's actually an error with the video
+            if (previewVideoEl.error) {
+                document.getElementById('videoError').classList.remove('hidden');
+            }
         });
 
         previewVideoEl.addEventListener('loadeddata', () => {
+            document.getElementById('videoError').classList.add('hidden');
+        });
+
+        previewVideoEl.addEventListener('canplay', () => {
             document.getElementById('videoError').classList.add('hidden');
         });
 
