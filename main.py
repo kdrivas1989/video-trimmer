@@ -10,9 +10,16 @@ from moviepy import VideoFileClip
 
 app = Flask(__name__)
 
-# Use local folders for file storage
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['OUTPUT_FOLDER'] = 'output'
+# Use user's home directory for file storage (works when packaged as app)
+def get_app_data_dir():
+    """Get appropriate directory for app data storage."""
+    home = Path.home()
+    app_dir = home / 'VideoTrimmer'
+    return app_dir
+
+APP_DATA_DIR = get_app_data_dir()
+app.config['UPLOAD_FOLDER'] = str(APP_DATA_DIR / 'uploads')
+app.config['OUTPUT_FOLDER'] = str(APP_DATA_DIR / 'output')
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 

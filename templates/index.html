@@ -42,7 +42,7 @@
             </svg>
             <p class="text-gray-600 mb-2">Drop video files here</p>
             <p class="text-sm text-gray-400 mb-4">MP4, AVI, MOV, MKV, WMV, FLV, WebM, MTS</p>
-            <input type="file" id="fileInput" multiple accept=".mp4,.avi,.mov,.mkv,.wmv,.flv,.webm,.mts,.MTS,video/*"
+            <input type="file" id="fileInput" multiple
                 onchange="handleFileSelect(this.files)"
                 class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer cursor-pointer">
         </div>
@@ -91,6 +91,12 @@
                             <div class="mt-1 text-xs text-gray-500">Sets duration to 0</div>
                         </div>
                         <div>
+                            <button onclick="canopyDownFromPreview()" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg transition font-semibold w-full">
+                                Canopy Down [C]
+                            </button>
+                            <div class="mt-1 text-xs text-gray-500">Sets duration to 0</div>
+                        </div>
+                        <div>
                             <button onclick="flagForReviewFromPreview()" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg transition font-semibold w-full">
                                 Flag for Review [F]
                             </button>
@@ -125,6 +131,7 @@
                 </div>
                 <div class="text-center text-xs text-gray-400">
                     Keyboard: <span class="font-mono bg-gray-100 px-1 rounded">M</span> = Missed Entry,
+                    <span class="font-mono bg-gray-100 px-1 rounded">C</span> = Canopy Down,
                     <span class="font-mono bg-gray-100 px-1 rounded">F</span> = Flag for Review,
                     <span class="font-mono bg-gray-100 px-1 rounded">S</span> = Set Start,
                     <span class="font-mono bg-gray-100 px-1 rounded">E</span> = Set End,
@@ -372,6 +379,26 @@
             }
         }
 
+        function canopyDown(id) {
+            const statusDiv = document.getElementById(`status-${id}`);
+            const card = document.getElementById(`card-${id}`);
+            const downloadDiv = document.getElementById(`download-${id}`);
+
+            // Update status
+            statusDiv.textContent = 'Canopy Down - Duration: 0.000s';
+            statusDiv.className = 'text-sm text-purple-600 font-medium';
+            card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-purple-500';
+
+            // Hide download
+            downloadDiv.classList.add('hidden');
+
+            // Store canopy down state
+            if (videos[id]) {
+                videos[id].canopyDown = true;
+                videos[id].trimmedDuration = 0;
+            }
+        }
+
         async function deleteVideo(id) {
             try {
                 await fetch(`/delete/${id}`, { method: 'DELETE' });
@@ -408,6 +435,9 @@
                 if (video.missedEntry) {
                     duration = '0.000s';
                     status = 'Missed Entry';
+                } else if (video.canopyDown) {
+                    duration = '0.000s';
+                    status = 'Canopy Down';
                 } else if (video.flaggedForReview) {
                     const startSecs = parseTimestamp(start);
                     const endSecs = parseTimestamp(end);
@@ -584,6 +614,14 @@
             }
         }
 
+        function canopyDownFromPreview() {
+            if (currentPreviewId) {
+                const id = currentPreviewId;
+                closePreview();
+                canopyDown(id);
+            }
+        }
+
         function flagForReviewFromPreview() {
             if (currentPreviewId) {
                 const id = currentPreviewId;
@@ -637,6 +675,10 @@
                 case 'm':
                     e.preventDefault();
                     missedEntryFromPreview();
+                    break;
+                case 'c':
+                    e.preventDefault();
+                    canopyDownFromPreview();
                     break;
                 case 'f':
                     e.preventDefault();
