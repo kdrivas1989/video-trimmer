@@ -75,33 +75,38 @@ def is_browser_playable(filepath):
 def transcode_for_browser(video_id, source_path):
     """Transcode video to H.264 for browser playback (runs in background)."""
     preview_path = os.path.join(PREVIEW_FOLDER, f"{video_id}_preview.mp4")
+    temp_path = preview_path + ".tmp"
 
     if os.path.exists(preview_path):
         return  # Already transcoded
 
     try:
-        with VideoFileClip(source_path) as clip:
-            # Use reasonable resolution for preview (max 720p)
-            if clip.h > 720:
-                resized = clip.resized(height=720)
-            else:
-                resized = clip
+        # Use ffmpeg directly for more reliable transcoding
+        cmd = [
+            'ffmpeg', '-y', '-i', source_path,
+            '-c:v', 'libx264', '-profile:v', 'baseline', '-level', '3.0',
+            '-pix_fmt', 'yuv420p', '-preset', 'fast',
+            '-vf', 'scale=-2:720',  # Scale to 720p max
+            '-c:a', 'aac', '-b:a', '128k',
+            '-movflags', '+faststart',
+            temp_path
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
 
-            resized.write_videofile(
-                preview_path,
-                codec="libx264",
-                audio_codec="aac",
-                preset="ultrafast",
-                bitrate="2000k",
-                logger=None
-            )
-
-        # Update video entry if it exists
-        if video_id in videos:
-            videos[video_id]['preview_path'] = preview_path
-            videos[video_id]['preview_ready'] = True
+        if result.returncode == 0 and os.path.exists(temp_path):
+            os.rename(temp_path, preview_path)
+            # Update video entry if it exists
+            if video_id in videos:
+                videos[video_id]['preview_path'] = preview_path
+                videos[video_id]['preview_ready'] = True
+        else:
+            print(f"Transcode failed for {video_id}: {result.stderr}")
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
     except Exception as e:
         print(f"Transcode failed for {video_id}: {e}")
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 
 def allowed_file(filename):
@@ -371,7 +376,13 @@ def get_preview(video_id):
 
     # Check if preview already exists
     if os.path.exists(preview_path):
-        return send_file(preview_path, mimetype='video/mp4', conditional=True)
+        return send_file(
+            preview_path,
+            mimetype='video/mp4',
+            as_attachment=False,
+            conditional=True,
+            max_age=0
+        )
 
     # Find the source video file
     source_path = find_video_file(video_id)
@@ -391,8 +402,8 @@ def get_preview(video_id):
                 preview_path,
                 codec="libx264",
                 audio_codec="aac",
-                preset="ultrafast",
-                bitrate="2000k",
+                preset="fast",
+                ffmpeg_params=["-pix_fmt", "yuv420p", "-movflags", "+faststart", "-profile:v", "baseline", "-level", "3.0"],
                 logger=None
             )
 
@@ -400,6 +411,25 @@ def get_preview(video_id):
 
     except Exception as e:
         return jsonify({'error': f'Failed to generate preview: {str(e)}'}), 500
+
+
+@app.route('/open-video/<video_id>')
+def open_video_player(video_id):
+    """Open video in system's default video player."""
+    import subprocess
+    preview_path = os.path.join(PREVIEW_FOLDER, f"{video_id}_preview.mp4")
+
+    if os.path.exists(preview_path):
+        subprocess.Popen(['open', preview_path])
+        return jsonify({'success': True, 'path': preview_path})
+
+    # Try original video
+    source_path = find_video_file(video_id)
+    if source_path and os.path.exists(source_path):
+        subprocess.Popen(['open', source_path])
+        return jsonify({'success': True, 'path': source_path})
+
+    return jsonify({'error': 'Video not found'}), 404
 
 
 @app.route('/preview/status/<video_id>')

@@ -68,18 +68,16 @@
                 <input type="text" id="previewFilename" class="flex-1 text-sm font-semibold text-gray-800 border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-blue-500" />
                 <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-xl">&times;</button>
             </div>
-            <video id="previewVideo" class="w-full bg-black rounded max-h-[40vh]" controls preload="none" playsinline webkit-playsinline>
-                Your browser does not support video playback.
-            </video>
+            <div class="bg-gray-900 rounded p-8 text-center">
+                <button onclick="openVideoInNewTab()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-lg font-semibold">
+                    ▶ Watch Video in New Tab
+                </button>
+                <p class="text-gray-400 text-sm mt-2">Note the timestamps, then enter them below</p>
+            </div>
             <div id="videoError" class="hidden text-center text-xs mt-1 p-2 bg-orange-50 rounded">
                 <p id="previewStatusText" class="text-orange-600">
                     <span class="inline-block animate-spin mr-1">⟳</span> Generating playable preview...
                 </p>
-            </div>
-            <div class="text-center mt-2">
-                <button onclick="openVideoInNewTab()" class="text-xs text-blue-600 hover:underline">
-                    Video not loading? Open in new tab
-                </button>
             </div>
             <div class="mt-2 space-y-2">
                 <!-- Current time and trim duration inline -->
@@ -582,6 +580,7 @@
         const previewStartDisplay = document.getElementById('previewStart');
         const previewEndDisplay = document.getElementById('previewEnd');
         let currentPreviewId = null;
+        let currentVideoUrl = null;
 
         // Sync filename changes from preview to main card
         previewFilename.addEventListener('input', () => {
@@ -606,71 +605,16 @@
         }
 
         async function previewVideo(id) {
-            currentPreviewId = id;
-            const video = videos[id];
-            // Get current filename from main card input (may have been edited)
-            const nameInput = document.getElementById(`name-${id}`);
-            previewFilename.value = nameInput ? nameInput.value : video.filename;
-            document.getElementById('videoError').classList.add('hidden');
-
-            // Reset video element
-            previewVideoEl.pause();
-            previewVideoEl.currentTime = 0;
-
-            // Check if a preview already exists or if original is playable
+            // Open video in system video player (QuickTime)
             try {
-                const statusRes = await fetch(`/preview/status/${id}`);
-                const status = await statusRes.json();
-
-                // Add cache-busting timestamp
-                const ts = Date.now();
-                if (status.use_preview || status.exists) {
-                    previewVideoEl.src = `/preview/${id}?t=${ts}`;
-                } else {
-                    previewVideoEl.src = `/video/${id}?t=${ts}`;
+                const res = await fetch(`/open-video/${id}`);
+                const data = await res.json();
+                if (!data.success) {
+                    alert('Could not open video: ' + (data.error || 'Unknown error'));
                 }
-            } catch {
-                // Fallback to original video
-                previewVideoEl.src = `/video/${id}`;
+            } catch (e) {
+                alert('Error opening video: ' + e.message);
             }
-
-            previewVideoEl.load();
-
-            // Try to play after load
-            previewVideoEl.onloadeddata = () => {
-                previewVideoEl.play().catch(() => {});
-            };
-
-            // Show current start/end values
-            const startInput = document.getElementById(`start-${id}`);
-            const endInput = document.getElementById(`end-${id}`);
-            previewStartDisplay.textContent = startInput.value;
-            previewEndDisplay.textContent = endInput.value;
-
-            previewModal.classList.add('active');
-
-            // Fetch video duration from server (works even if preview doesn't)
-            fetch(`/duration/${id}`)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.duration > 0) {
-                        // Update end time if it's still at 0
-                        if (endInput.value === '0.000s' || endInput.value === '0s') {
-                            endInput.value = data.duration_str;
-                            previewEndDisplay.textContent = data.duration_str;
-                        }
-                        // Show duration in the current time display area
-                        document.getElementById('videoDuration').textContent = data.duration_str;
-                        updateTrimDuration();
-                    }
-                })
-                .catch(() => {});
-
-            // Try to play, but don't fail if autoplay is blocked
-            previewVideoEl.play().catch(() => {});
-
-            // Update trim duration display
-            updateTrimDuration();
         }
 
         function closePreview() {
@@ -681,9 +625,10 @@
         }
 
         function openVideoInNewTab() {
-            if (currentPreviewId) {
-                const url = previewVideoEl.src || `/preview/${currentPreviewId}`;
-                window.open(url, '_blank');
+            if (currentVideoUrl) {
+                window.open(currentVideoUrl, '_blank');
+            } else if (currentPreviewId) {
+                window.open(`/preview/${currentPreviewId}`, '_blank');
             }
         }
 
