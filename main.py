@@ -74,11 +74,9 @@ def upload_file():
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{video_id}_{filename}")
             file.save(filepath)
 
-            # Try to get duration, but don't fail if it takes too long
-            try:
-                duration = get_video_duration(filepath)
-            except Exception:
-                duration = 0
+            # Skip duration reading on upload - it's slow for large files
+            # Duration will be read when previewing
+            duration = 0
 
             videos[video_id] = {
                 'id': video_id,
@@ -174,7 +172,21 @@ def serve_video(video_id):
         return jsonify({'error': 'Video not found'}), 404
 
     video = videos[video_id]
-    return send_file(video['filepath'])
+    filepath = video['filepath']
+
+    # Get file extension for mimetype
+    ext = os.path.splitext(filepath)[1].lower()
+    mimetypes = {
+        '.mp4': 'video/mp4',
+        '.mkv': 'video/x-matroska',
+        '.avi': 'video/x-msvideo',
+        '.mov': 'video/quicktime',
+        '.webm': 'video/webm',
+        '.mts': 'video/mp2t',
+    }
+    mimetype = mimetypes.get(ext, 'video/mp4')
+
+    return send_file(filepath, mimetype=mimetype, conditional=True)
 
 
 @app.route('/delete/<video_id>', methods=['DELETE'])
