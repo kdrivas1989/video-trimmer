@@ -1,9 +1,7 @@
 services:
   - type: web
     name: video-trimmer
-    runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn main:app --bind 0.0.0.0:$PORT --timeout 300 --workers 2
+    runtime: docker
     envVars:
-      - key: PYTHON_VERSION
-        value: "3.11"
+      - key: RENDER
+        value: "true"

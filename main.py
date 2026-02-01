@@ -10,12 +10,17 @@ from moviepy import VideoFileClip
 
 app = Flask(__name__)
 
-# Use user's home directory for file storage (works when packaged as app)
+# Use appropriate directory for file storage based on environment
 def get_app_data_dir():
     """Get appropriate directory for app data storage."""
-    home = Path.home()
-    app_dir = home / 'VideoTrimmer'
-    return app_dir
+    # Check if running in Docker/server environment
+    if os.environ.get('RENDER') or os.path.exists('/.dockerenv'):
+        # Use local directory for server/Docker
+        return Path('/app')
+    else:
+        # Use user's home directory for desktop app
+        home = Path.home()
+        return home / 'VideoTrimmer'
 
 APP_DATA_DIR = get_app_data_dir()
 app.config['UPLOAD_FOLDER'] = str(APP_DATA_DIR / 'uploads')

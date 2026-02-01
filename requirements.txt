@@ -1,6 +1,8 @@
 moviepy>=1.0.3
 flask>=3.0.0
 gunicorn>=21.0.0
+imageio>=2.31.0
+imageio-ffmpeg>=0.4.9
 pywebview>=4.0.0
 pyinstaller>=6.0.0
 # Windows may need: pip install cefpython3 (optional, for CEF backend)
