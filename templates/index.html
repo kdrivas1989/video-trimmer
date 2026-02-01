@@ -81,18 +81,20 @@
                         <div id="currentTime" class="font-mono text-2xl text-gray-800">00:00:00</div>
                     </div>
                 </div>
-                <div class="flex flex-wrap gap-4 items-center justify-center">
-                    <div class="text-center">
-                        <button onclick="missedEntryFromPreview()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg transition font-semibold">
-                            Missed Entry [M]
-                        </button>
-                        <div class="mt-1 text-xs text-gray-500">Sets duration to 0</div>
-                    </div>
-                    <div class="text-center">
-                        <button onclick="flagForReviewFromPreview()" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg transition font-semibold">
-                            Flag for Review [F]
-                        </button>
-                        <div class="mt-1 text-xs text-gray-500">Mark for later review</div>
+                <div class="flex flex-wrap gap-4 items-start justify-center">
+                    <div class="text-center flex flex-col gap-2">
+                        <div>
+                            <button onclick="missedEntryFromPreview()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg transition font-semibold w-full">
+                                Missed Entry [M]
+                            </button>
+                            <div class="mt-1 text-xs text-gray-500">Sets duration to 0</div>
+                        </div>
+                        <div>
+                            <button onclick="flagForReviewFromPreview()" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg transition font-semibold w-full">
+                                Flag for Review [F]
+                            </button>
+                            <div class="mt-1 text-xs text-gray-500">Mark for later review</div>
+                        </div>
                     </div>
                     <div class="text-center">
                         <button onclick="setStartFromPlayer()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition font-semibold">
