@@ -214,30 +214,36 @@ def download_video(video_id):
 @app.route('/duration/<video_id>')
 def get_duration(video_id):
     """Get video duration (reads from file if not cached)."""
-    if video_id not in videos:
+    # Check dictionary first for cached duration
+    if video_id in videos:
+        video = videos[video_id]
+        if video.get('duration', 0) == 0:
+            duration = get_video_duration(video['filepath'])
+            video['duration'] = duration
+            video['duration_str'] = seconds_to_timestamp(duration)
+        return jsonify({
+            'duration': video['duration'],
+            'duration_str': video['duration_str']
+        })
+
+    # Otherwise find file on disk
+    filepath = find_video_file(video_id)
+    if not filepath:
         return jsonify({'error': 'Video not found'}), 404
 
-    video = videos[video_id]
-
-    # Get duration if not already cached or is 0
-    if video.get('duration', 0) == 0:
-        duration = get_video_duration(video['filepath'])
-        video['duration'] = duration
-        video['duration_str'] = seconds_to_timestamp(duration)
-
+    duration = get_video_duration(filepath)
     return jsonify({
-        'duration': video['duration'],
-        'duration_str': video['duration_str']
+        'duration': duration,
+        'duration_str': seconds_to_timestamp(duration)
     })
 
 
 @app.route('/video/<video_id>')
 def serve_video(video_id):
-    if video_id not in videos:
+    # Find video file (handles server restarts)
+    filepath = find_video_file(video_id)
+    if not filepath or not os.path.exists(filepath):
         return jsonify({'error': 'Video not found'}), 404
-
-    video = videos[video_id]
-    filepath = video['filepath']
 
     # Get file extension for mimetype
     ext = os.path.splitext(filepath)[1].lower()
@@ -254,22 +260,38 @@ def serve_video(video_id):
     return send_file(filepath, mimetype=mimetype, conditional=True)
 
 
+def find_video_file(video_id):
+    """Find video file by ID, even if not in videos dictionary."""
+    # First check if in dictionary
+    if video_id in videos:
+        return videos[video_id]['filepath']
+
+    # Otherwise scan uploads folder for matching file
+    upload_folder = app.config['UPLOAD_FOLDER']
+    if os.path.exists(upload_folder):
+        for filename in os.listdir(upload_folder):
+            if filename.startswith(video_id + '_'):
+                return os.path.join(upload_folder, filename)
+    return None
+
+
 @app.route('/preview/<video_id>')
 def get_preview(video_id):
     """Generate and serve an H.264 preview for H.265/HEVC videos."""
-    if video_id not in videos:
-        return jsonify({'error': 'Video not found'}), 404
-
-    video = videos[video_id]
     preview_path = os.path.join(PREVIEW_FOLDER, f"{video_id}_preview.mp4")
 
     # Check if preview already exists
     if os.path.exists(preview_path):
         return send_file(preview_path, mimetype='video/mp4', conditional=True)
 
+    # Find the source video file
+    source_path = find_video_file(video_id)
+    if not source_path or not os.path.exists(source_path):
+        return jsonify({'error': 'Video not found'}), 404
+
     # Generate preview by transcoding to H.264
     try:
-        with VideoFileClip(video['filepath']) as clip:
+        with VideoFileClip(source_path) as clip:
             # Use a reasonable resolution for preview (max 720p)
             if clip.h > 720:
                 resized = clip.resized(height=720)
@@ -285,7 +307,6 @@ def get_preview(video_id):
                 logger=None
             )
 
-        video['preview_path'] = preview_path
         return send_file(preview_path, mimetype='video/mp4', conditional=True)
 
     except Exception as e:
@@ -295,7 +316,9 @@ def get_preview(video_id):
 @app.route('/preview/status/<video_id>')
 def preview_status(video_id):
     """Check if a preview exists or needs to be generated."""
-    if video_id not in videos:
+    # Check if video file exists (either in dict or on disk)
+    source_path = find_video_file(video_id)
+    if not source_path:
         return jsonify({'error': 'Video not found'}), 404
 
     preview_path = os.path.join(PREVIEW_FOLDER, f"{video_id}_preview.mp4")
