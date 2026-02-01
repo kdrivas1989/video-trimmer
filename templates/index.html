@@ -68,7 +68,7 @@
                 <h3 id="previewTitle" class="text-lg font-semibold text-gray-800"></h3>
                 <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
             </div>
-            <video id="previewVideo" class="w-full bg-black rounded" controls>
+            <video id="previewVideo" class="w-full bg-black rounded" controls preload="auto">
                 Your browser does not support video playback.
             </video>
             <p id="videoError" class="hidden text-red-500 text-center mt-2 p-2 bg-red-50 rounded">
@@ -469,7 +469,12 @@
             const video = videos[id];
             previewTitle.textContent = video.filename;
             document.getElementById('videoError').classList.add('hidden');
+
+            // Reset video element
+            previewVideoEl.pause();
+            previewVideoEl.currentTime = 0;
             previewVideoEl.src = `/video/${id}`;
+            previewVideoEl.load();
 
             // Show current start/end values
             const startInput = document.getElementById(`start-${id}`);
@@ -478,7 +483,9 @@
             previewEndDisplay.textContent = endInput.value;
 
             previewModal.classList.add('active');
-            previewVideoEl.play();
+
+            // Try to play, but don't fail if autoplay is blocked
+            previewVideoEl.play().catch(() => {});
 
             // Update trim duration display
             updateTrimDuration();
@@ -645,23 +652,22 @@
                     break;
                 case ' ':
                     e.preventDefault();
-                    if (previewVideoEl.paused) {
-                        previewVideoEl.play();
+                    if (previewVideoEl.paused || previewVideoEl.ended) {
+                        previewVideoEl.play().catch(() => {});
                     } else {
                         previewVideoEl.pause();
                     }
                     break;
                 case 'arrowleft':
                     e.preventDefault();
-                    if (previewVideoEl.paused) {
-                        previewVideoEl.currentTime = Math.max(0, previewVideoEl.currentTime - FRAME_TIME);
-                    }
+                    previewVideoEl.pause();
+                    previewVideoEl.currentTime = Math.max(0, previewVideoEl.currentTime - FRAME_TIME);
                     break;
                 case 'arrowright':
                     e.preventDefault();
-                    if (previewVideoEl.paused) {
-                        previewVideoEl.currentTime = Math.min(previewVideoEl.duration, previewVideoEl.currentTime + FRAME_TIME);
-                    }
+                    previewVideoEl.pause();
+                    const maxTime = previewVideoEl.duration || 9999;
+                    previewVideoEl.currentTime = Math.min(maxTime, previewVideoEl.currentTime + FRAME_TIME);
                     break;
             }
         });
