@@ -10,10 +10,9 @@ from moviepy import VideoFileClip
 
 app = Flask(__name__)
 
-# Use /data for persistent storage on Render, fallback to local folders
-DATA_DIR = os.environ.get('DATA_DIR', '/data' if os.path.exists('/data') else '.')
-app.config['UPLOAD_FOLDER'] = os.path.join(DATA_DIR, 'uploads')
-app.config['OUTPUT_FOLDER'] = os.path.join(DATA_DIR, 'output')
+# Use local folders for file storage
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['OUTPUT_FOLDER'] = 'output'
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
