@@ -436,6 +436,11 @@
                     duration = '0.000s';
                     status = 'Missed Entry';
                 } else if (video.flaggedForReview) {
+                    const startSecs = parseTimestamp(start);
+                    const endSecs = parseTimestamp(end);
+                    if (endSecs > startSecs) {
+                        duration = formatTime(endSecs - startSecs) + '*';
+                    }
                     status = 'Flagged for Review';
                 } else if (statusDiv && statusDiv.textContent.includes('Complete')) {
                     const startSecs = parseTimestamp(start);
@@ -600,9 +605,22 @@
         function flagForReview(id) {
             const statusDiv = document.getElementById(`status-${id}`);
             const card = document.getElementById(`card-${id}`);
+            const startInput = document.getElementById(`start-${id}`);
+            const endInput = document.getElementById(`end-${id}`);
+
+            // Calculate duration if start/end are set
+            let durationText = '';
+            if (startInput && endInput) {
+                const startSecs = parseTimestamp(startInput.value);
+                const endSecs = parseTimestamp(endInput.value);
+                if (endSecs > startSecs) {
+                    const duration = formatTime(endSecs - startSecs);
+                    durationText = ` - Duration: ${duration}*`;
+                }
+            }
 
             // Update status
-            statusDiv.textContent = 'Flagged for Review';
+            statusDiv.textContent = `Flagged for Review${durationText}`;
             statusDiv.className = 'text-sm text-orange-600 font-medium';
             card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-orange-500';
 
