@@ -81,7 +81,7 @@
                     <div><span class="text-gray-500">Duration:</span> <span id="previewTrimDuration" class="font-mono font-semibold text-blue-600">0.000s</span></div>
                 </div>
                 <!-- All buttons in one row -->
-                <div class="flex flex-wrap gap-2 items-center justify-center">
+                <div class="flex flex-wrap gap-2 items-start justify-center">
                     <div class="flex flex-col gap-1">
                         <button onclick="missedEntryFromPreview()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded text-sm font-medium">
                             Missed [M]
@@ -91,23 +91,29 @@
                         </button>
                     </div>
                     <div class="text-center">
-                        <button onclick="setStartFromPlayer()" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded text-sm font-medium">
+                        <button onclick="setStartFromPlayer()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-1.5 rounded text-sm font-medium">
                             Start [S]
                         </button>
                         <div class="text-xs text-gray-600"><span id="previewStart" class="font-mono">0.000s</span> <button onclick="jumpToStart()" class="text-green-600 hover:underline">go</button></div>
                     </div>
                     <div class="text-center">
-                        <button onclick="setEndFromPlayer()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-sm font-medium">
+                        <button onclick="setEndFromPlayer()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded text-sm font-medium">
                             End [E]
                         </button>
                         <div class="text-xs text-gray-600"><span id="previewEnd" class="font-mono">--.---s</span> <button onclick="jumpToEnd()" class="text-red-600 hover:underline">go</button></div>
                     </div>
-                    <button onclick="flagForReviewFromPreview()" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded text-sm font-medium">
-                        Flag [F]
-                    </button>
-                    <button onclick="saveTimesAndClose()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm font-semibold">
-                        Save & Trim
-                    </button>
+                    <div class="text-center">
+                        <button onclick="flagForReviewFromPreview()" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded text-sm font-medium">
+                            Flag [F]
+                        </button>
+                        <div class="text-xs text-gray-600">&nbsp;</div>
+                    </div>
+                    <div class="text-center">
+                        <button onclick="saveTimesAndClose()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm font-semibold">
+                            Save & Trim
+                        </button>
+                        <div class="text-xs text-gray-600">&nbsp;</div>
+                    </div>
                 </div>
                 <div class="text-center text-xs text-gray-400">
                     Keys: M/C/F/S/E, Space=Play, ←/→=Frame
