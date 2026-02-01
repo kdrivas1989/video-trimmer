@@ -72,13 +72,9 @@
                 Your browser does not support video playback.
             </video>
             <div id="videoError" class="hidden text-center text-xs mt-1 p-2 bg-orange-50 rounded">
-                <p class="text-orange-600 mb-2">Preview unavailable (likely H.265/HEVC codec).</p>
-                <button onclick="generatePreview()" id="generatePreviewBtn" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded text-sm font-medium">
-                    Generate Playable Preview
-                </button>
-                <span id="previewLoading" class="hidden text-orange-600">
-                    <span class="inline-block animate-spin mr-1">⟳</span> Generating preview... (may take 30-60 sec)
-                </span>
+                <p id="previewStatusText" class="text-orange-600">
+                    <span class="inline-block animate-spin mr-1">⟳</span> Generating playable preview...
+                </p>
             </div>
             <div class="mt-2 space-y-2">
                 <!-- Current time and trim duration inline -->
@@ -686,66 +682,48 @@
 
         previewVideoEl.addEventListener('error', (e) => {
             // Only show error if there's actually an error with the video
-            if (previewVideoEl.error) {
+            if (previewVideoEl.error && currentPreviewId) {
                 const errorDiv = document.getElementById('videoError');
-                const generateBtn = document.getElementById('generatePreviewBtn');
-                const loadingSpan = document.getElementById('previewLoading');
-
                 errorDiv.classList.remove('hidden');
-                generateBtn.classList.remove('hidden');
-                loadingSpan.classList.add('hidden');
+
+                // Auto-poll for preview to be ready
+                autoLoadPreview(currentPreviewId);
             }
         });
 
-        async function generatePreview() {
-            if (!currentPreviewId) return;
+        async function autoLoadPreview(videoId) {
+            const errorDiv = document.getElementById('videoError');
+            const statusText = document.getElementById('previewStatusText');
 
-            const generateBtn = document.getElementById('generatePreviewBtn');
-            const loadingSpan = document.getElementById('previewLoading');
+            const checkAndLoad = async () => {
+                if (currentPreviewId !== videoId) return; // User closed or switched video
 
-            // Show loading state
-            generateBtn.classList.add('hidden');
-            loadingSpan.classList.remove('hidden');
+                try {
+                    const res = await fetch(`/preview/status/${videoId}`);
+                    const data = await res.json();
 
-            try {
-                // Request the preview - this will transcode if needed
-                const response = await fetch(`/preview/${currentPreviewId}`);
-
-                if (response.ok) {
-                    const contentType = response.headers.get('content-type');
-                    if (contentType && contentType.includes('video')) {
-                        // Load the preview video
-                        previewVideoEl.src = `/preview/${currentPreviewId}`;
+                    if (data.exists) {
+                        // Preview is ready, load it
+                        statusText.innerHTML = '<span class="text-green-600">Preview ready, loading...</span>';
+                        previewVideoEl.src = `/preview/${videoId}`;
                         previewVideoEl.load();
 
-                        // Hide error div on successful load
                         previewVideoEl.oncanplay = () => {
-                            document.getElementById('videoError').classList.add('hidden');
+                            errorDiv.classList.add('hidden');
                             previewVideoEl.play().catch(() => {});
                         };
                     } else {
-                        // Unexpected response type
-                        throw new Error('Server returned unexpected response');
+                        // Still transcoding, check again
+                        statusText.innerHTML = '<span class="inline-block animate-spin mr-1">⟳</span> Generating playable preview...';
+                        setTimeout(checkAndLoad, 2000);
                     }
-                } else {
-                    // Try to parse error message
-                    let errorMsg = 'Unknown error';
-                    try {
-                        const text = await response.text();
-                        const data = JSON.parse(text);
-                        errorMsg = data.error || errorMsg;
-                    } catch {
-                        errorMsg = `Server error (${response.status})`;
-                    }
-                    alert('Failed to generate preview: ' + errorMsg);
-                    generateBtn.classList.remove('hidden');
-                    loadingSpan.classList.add('hidden');
+                } catch {
+                    // Retry on error
+                    setTimeout(checkAndLoad, 3000);
                 }
-            } catch (error) {
-                alert('Failed to generate preview: ' + error.message);
-                generateBtn.classList.remove('hidden');
-                loadingSpan.classList.add('hidden');
-            }
+            };
+
+            checkAndLoad();
         }
 
         previewVideoEl.addEventListener('loadeddata', () => {
