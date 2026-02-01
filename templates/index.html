@@ -193,6 +193,9 @@
                 if (response.ok) {
                     // Remove placeholder and add real card
                     removeVideoCard(tempId);
+                    // Store start and end times
+                    data.start_time = data.start_time || '0.000s';
+                    data.end_time = data.end_time || data.duration_str;
                     videos[data.id] = data;
                     addVideoCard(data.id, data.filename, data.duration, data.duration_str, false, data.browser_playable);
                     updateTrimAllVisibility();
@@ -233,6 +236,10 @@
                     </div>
                 `;
             } else {
+                // Get start and end times from video data or defaults
+                const startTime = videos[id]?.start_time || '0.000s';
+                const endTime = videos[id]?.end_time || durationStr;
+
                 card.innerHTML = `
                     <div class="flex flex-wrap items-center gap-4">
                         <div class="flex-1 min-w-[200px]">
@@ -243,18 +250,26 @@
                                     Preview
                                 </button>
                             </div>
-                            <p class="text-sm text-gray-500">Duration: ${durationStr}</p>
+                            <p class="text-sm text-gray-500">
+                                <span class="font-medium">Duration:</span> ${durationStr}
+                                <span class="mx-2">|</span>
+                                <span class="text-green-600">Start:</span> <span id="startDisplay-${id}">${startTime}</span>
+                                <span class="mx-1">→</span>
+                                <span class="text-red-600">End:</span> <span id="endDisplay-${id}">${endTime}</span>
+                            </p>
                             <p id="status-${id}" class="text-sm text-green-600 font-medium"></p>
                         </div>
                         <div class="flex items-center gap-2">
                             <label class="text-sm text-gray-600">Start:</label>
-                            <input type="text" id="start-${id}" value="0.000s"
-                                class="border rounded px-2 py-1 w-32 text-sm font-mono" placeholder="0.000s">
+                            <input type="text" id="start-${id}" value="${startTime}"
+                                class="border rounded px-2 py-1 w-32 text-sm font-mono" placeholder="0.000s"
+                                onchange="updateTimeDisplay('${id}')">
                         </div>
                         <div class="flex items-center gap-2">
                             <label class="text-sm text-gray-600">End:</label>
-                            <input type="text" id="end-${id}" value="${durationStr}"
-                                class="border rounded px-2 py-1 w-32 text-sm font-mono" placeholder="0.000s">
+                            <input type="text" id="end-${id}" value="${endTime}"
+                                class="border rounded px-2 py-1 w-32 text-sm font-mono" placeholder="0.000s"
+                                onchange="updateTimeDisplay('${id}')">
                         </div>
                         <div class="flex gap-2 flex-wrap">
                             <button onclick="deleteVideo('${id}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded text-sm transition">
@@ -296,6 +311,20 @@
 
         function updateTrimAllVisibility() {
             trimAllContainer.classList.toggle('hidden', Object.keys(videos).length === 0);
+        }
+
+        function updateTimeDisplay(id) {
+            const startInput = document.getElementById(`start-${id}`);
+            const endInput = document.getElementById(`end-${id}`);
+            const startDisplay = document.getElementById(`startDisplay-${id}`);
+            const endDisplay = document.getElementById(`endDisplay-${id}`);
+
+            if (startInput && startDisplay) {
+                startDisplay.textContent = startInput.value;
+            }
+            if (endInput && endDisplay) {
+                endDisplay.textContent = endInput.value;
+            }
         }
 
         function pollTranscodeStatus(id) {

@@ -156,6 +156,9 @@ def upload_file():
             # Check if browser can play this codec
             playable = is_browser_playable(filepath)
 
+            # Get duration on upload
+            duration = get_video_duration(filepath)
+
             videos[video_id] = {
                 'id': video_id,
                 'filename': filename,
@@ -180,6 +183,8 @@ def upload_file():
                 'filename': filename,
                 'duration': duration,
                 'duration_str': seconds_to_timestamp(duration),
+                'start_time': '0.000s',
+                'end_time': seconds_to_timestamp(duration),
                 'browser_playable': playable
             })
 
