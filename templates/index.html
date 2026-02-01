@@ -89,6 +89,12 @@
                         <div class="mt-1 text-xs text-gray-500">Sets duration to 0</div>
                     </div>
                     <div class="text-center">
+                        <button onclick="flagForReviewFromPreview()" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg transition font-semibold">
+                            Flag for Review [F]
+                        </button>
+                        <div class="mt-1 text-xs text-gray-500">Mark for later review</div>
+                    </div>
+                    <div class="text-center">
                         <button onclick="setStartFromPlayer()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition font-semibold">
                             Set Start [S]
                         </button>
@@ -116,6 +122,7 @@
                 </div>
                 <div class="text-center text-xs text-gray-400">
                     Keyboard: <span class="font-mono bg-gray-100 px-1 rounded">M</span> = Missed Entry,
+                    <span class="font-mono bg-gray-100 px-1 rounded">F</span> = Flag for Review,
                     <span class="font-mono bg-gray-100 px-1 rounded">S</span> = Set Start,
                     <span class="font-mono bg-gray-100 px-1 rounded">E</span> = Set End,
                     <span class="font-mono bg-gray-100 px-1 rounded">Space</span> = Play/Pause,
@@ -428,6 +435,8 @@
                 if (video.missedEntry) {
                     duration = '0.000s';
                     status = 'Missed Entry';
+                } else if (video.flaggedForReview) {
+                    status = 'Flagged for Review';
                 } else if (statusDiv && statusDiv.textContent.includes('Complete')) {
                     const startSecs = parseTimestamp(start);
                     const endSecs = parseTimestamp(end);
@@ -580,6 +589,29 @@
             }
         }
 
+        function flagForReviewFromPreview() {
+            if (currentPreviewId) {
+                const id = currentPreviewId;
+                closePreview();
+                flagForReview(id);
+            }
+        }
+
+        function flagForReview(id) {
+            const statusDiv = document.getElementById(`status-${id}`);
+            const card = document.getElementById(`card-${id}`);
+
+            // Update status
+            statusDiv.textContent = 'Flagged for Review';
+            statusDiv.className = 'text-sm text-orange-600 font-medium';
+            card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-orange-500';
+
+            // Store flagged state
+            if (videos[id]) {
+                videos[id].flaggedForReview = true;
+            }
+        }
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -597,6 +629,10 @@
                 case 'm':
                     e.preventDefault();
                     missedEntryFromPreview();
+                    break;
+                case 'f':
+                    e.preventDefault();
+                    flagForReviewFromPreview();
                     break;
                 case 's':
                     e.preventDefault();
