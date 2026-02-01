@@ -231,6 +231,9 @@
                                 class="font-medium text-gray-800 w-full border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none bg-transparent" title="Click to rename">
                             <p class="text-sm text-gray-500">Duration: ${durationStr}</p>
                             <p id="status-${id}" class="text-sm text-green-600 font-medium">Ready</p>
+                            <button onclick="previewVideo('${id}')" class="mt-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-1 rounded text-sm transition">
+                                Preview
+                            </button>
                         </div>
                         <div class="flex items-center gap-2">
                             <label class="text-sm text-gray-600">Start:</label>
@@ -243,9 +246,6 @@
                                 class="border rounded px-2 py-1 w-32 text-sm font-mono" placeholder="0.000s">
                         </div>
                         <div class="flex gap-2 flex-wrap">
-                            <button onclick="previewVideo('${id}')" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1 rounded text-sm transition">
-                                Preview
-                            </button>
                             <button onclick="deleteVideo('${id}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded text-sm transition">
                                 Remove
                             </button>
