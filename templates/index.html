@@ -53,11 +53,8 @@
             <div id="videoList" class="space-y-3"></div>
         </div>
 
-        <!-- Trim All Button -->
-        <div id="trimAllContainer" class="hidden mt-6 text-center space-x-4">
-            <button id="trimAllBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition">
-                Trim All Videos
-            </button>
+        <!-- Export Button -->
+        <div id="trimAllContainer" class="hidden mt-6 text-center">
             <button onclick="exportCSV()" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-8 rounded-lg transition">
                 Export CSV
             </button>
@@ -139,7 +136,6 @@
         const fileInput = document.getElementById('fileInput');
         const videoList = document.getElementById('videoList');
         const trimAllContainer = document.getElementById('trimAllContainer');
-        const trimAllBtn = document.getElementById('trimAllBtn');
 
         let videos = {};
 
@@ -386,12 +382,6 @@
                 alert('Delete failed: ' + error.message);
             }
         }
-
-        trimAllBtn.addEventListener('click', async () => {
-            for (const id of Object.keys(videos)) {
-                await trimVideo(id);
-            }
-        });
 
         function exportCSV() {
             const rows = [['Filename', 'Start', 'End', 'Duration', 'Status']];
