@@ -24,7 +24,10 @@ def build():
         '--hidden-import=webview',
         '--hidden-import=flask',
         '--collect-all=moviepy',
+        '--collect-all=imageio',
         '--collect-all=imageio_ffmpeg',
+        '--copy-metadata=imageio',
+        '--copy-metadata=imageio_ffmpeg',
         'app.py'
     ]
 
