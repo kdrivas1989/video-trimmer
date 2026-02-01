@@ -80,6 +80,12 @@
                 </div>
                 <div class="flex flex-wrap gap-4 items-center justify-center">
                     <div class="text-center">
+                        <button onclick="missedEntryFromPreview()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg transition font-semibold">
+                            Missed Entry [M]
+                        </button>
+                        <div class="mt-1 text-xs text-gray-500">Sets duration to 0</div>
+                    </div>
+                    <div class="text-center">
                         <button onclick="setStartFromPlayer()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition font-semibold">
                             Set Start [S]
                         </button>
@@ -106,10 +112,11 @@
                     </button>
                 </div>
                 <div class="text-center text-xs text-gray-400">
-                    Keyboard: <span class="font-mono bg-gray-100 px-1 rounded">S</span> = Set Start,
+                    Keyboard: <span class="font-mono bg-gray-100 px-1 rounded">M</span> = Missed Entry,
+                    <span class="font-mono bg-gray-100 px-1 rounded">S</span> = Set Start,
                     <span class="font-mono bg-gray-100 px-1 rounded">E</span> = Set End,
                     <span class="font-mono bg-gray-100 px-1 rounded">Space</span> = Play/Pause,
-                    <span class="font-mono bg-gray-100 px-1 rounded">←</span> / <span class="font-mono bg-gray-100 px-1 rounded">→</span> = Frame step (when paused)
+                    <span class="font-mono bg-gray-100 px-1 rounded">←</span> / <span class="font-mono bg-gray-100 px-1 rounded">→</span> = Frame step
                 </div>
             </div>
         </div>
@@ -506,6 +513,14 @@
             }
         }
 
+        function missedEntryFromPreview() {
+            if (currentPreviewId) {
+                const id = currentPreviewId;
+                closePreview();
+                missedEntry(id);
+            }
+        }
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -520,6 +535,10 @@
             const FRAME_TIME = 1/30; // ~30fps, one frame ≈ 0.033 seconds
 
             switch(e.key.toLowerCase()) {
+                case 'm':
+                    e.preventDefault();
+                    missedEntryFromPreview();
+                    break;
                 case 's':
                     e.preventDefault();
                     setStartFromPlayer();
