@@ -77,7 +77,7 @@
                     Generate Playable Preview
                 </button>
                 <span id="previewLoading" class="hidden text-orange-600">
-                    <span class="inline-block animate-spin mr-1">⟳</span> Generating preview (this may take a moment)...
+                    <span class="inline-block animate-spin mr-1">⟳</span> Generating preview... (may take 30-60 sec)
                 </span>
             </div>
             <div class="mt-2 space-y-2">
@@ -636,18 +636,32 @@
                 const response = await fetch(`/preview/${currentPreviewId}`);
 
                 if (response.ok) {
-                    // Load the preview video
-                    previewVideoEl.src = `/preview/${currentPreviewId}`;
-                    previewVideoEl.load();
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('video')) {
+                        // Load the preview video
+                        previewVideoEl.src = `/preview/${currentPreviewId}`;
+                        previewVideoEl.load();
 
-                    // Hide error div on successful load
-                    previewVideoEl.oncanplay = () => {
-                        document.getElementById('videoError').classList.add('hidden');
-                        previewVideoEl.play().catch(() => {});
-                    };
+                        // Hide error div on successful load
+                        previewVideoEl.oncanplay = () => {
+                            document.getElementById('videoError').classList.add('hidden');
+                            previewVideoEl.play().catch(() => {});
+                        };
+                    } else {
+                        // Unexpected response type
+                        throw new Error('Server returned unexpected response');
+                    }
                 } else {
-                    const data = await response.json();
-                    alert('Failed to generate preview: ' + (data.error || 'Unknown error'));
+                    // Try to parse error message
+                    let errorMsg = 'Unknown error';
+                    try {
+                        const text = await response.text();
+                        const data = JSON.parse(text);
+                        errorMsg = data.error || errorMsg;
+                    } catch {
+                        errorMsg = `Server error (${response.status})`;
+                    }
+                    alert('Failed to generate preview: ' + errorMsg);
                     generateBtn.classList.remove('hidden');
                     loadingSpan.classList.add('hidden');
                 }
