@@ -250,12 +250,6 @@
                             <button onclick="previewVideo('${id}')" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1 rounded text-sm transition">
                                 Preview
                             </button>
-                            <button onclick="trimVideo('${id}')" id="trimBtn-${id}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded text-sm transition">
-                                Trim
-                            </button>
-                            <button onclick="missedEntry('${id}')" id="missedBtn-${id}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-1 rounded text-sm transition">
-                                Missed Entry
-                            </button>
                             <button onclick="deleteVideo('${id}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded text-sm transition">
                                 Remove
                             </button>
@@ -296,15 +290,12 @@
             const progressBar = document.getElementById(`progressBar-${id}`);
             const downloadDiv = document.getElementById(`download-${id}`);
             const statusDiv = document.getElementById(`status-${id}`);
-            const trimBtn = document.getElementById(`trimBtn-${id}`);
             const card = document.getElementById(`card-${id}`);
 
             // Update status
             statusDiv.textContent = 'Trimming...';
             statusDiv.className = 'text-sm text-blue-600 font-medium';
             card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-blue-500';
-            trimBtn.disabled = true;
-            trimBtn.className = 'bg-gray-400 text-white px-4 py-1 rounded text-sm cursor-not-allowed';
 
             progressDiv.classList.remove('hidden');
             downloadDiv.classList.add('hidden');
@@ -346,45 +337,30 @@
                         statusDiv.textContent = `Complete - Duration: ${trimmedDuration}`;
                         statusDiv.className = 'text-sm text-green-600 font-medium';
                         card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-green-500';
-                        trimBtn.textContent = 'Trim Again';
-                        trimBtn.disabled = false;
-                        trimBtn.className = 'bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded text-sm transition';
                     }, 500);
                 } else {
                     progressDiv.classList.add('hidden');
                     statusDiv.textContent = 'Error: ' + data.error;
                     statusDiv.className = 'text-sm text-red-600 font-medium';
                     card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-red-500';
-                    trimBtn.disabled = false;
-                    trimBtn.className = 'bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded text-sm transition';
                 }
             } catch (error) {
                 progressDiv.classList.add('hidden');
                 statusDiv.textContent = 'Error: ' + error.message;
                 statusDiv.className = 'text-sm text-red-600 font-medium';
                 card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-red-500';
-                trimBtn.disabled = false;
-                trimBtn.className = 'bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded text-sm transition';
             }
         }
 
         function missedEntry(id) {
             const statusDiv = document.getElementById(`status-${id}`);
             const card = document.getElementById(`card-${id}`);
-            const trimBtn = document.getElementById(`trimBtn-${id}`);
-            const missedBtn = document.getElementById(`missedBtn-${id}`);
             const downloadDiv = document.getElementById(`download-${id}`);
 
             // Update status
             statusDiv.textContent = 'Missed Entry - Duration: 0.000s';
             statusDiv.className = 'text-sm text-yellow-600 font-medium';
             card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-yellow-500';
-
-            // Disable buttons
-            trimBtn.disabled = true;
-            trimBtn.className = 'bg-gray-400 text-white px-4 py-1 rounded text-sm cursor-not-allowed';
-            missedBtn.disabled = true;
-            missedBtn.className = 'bg-gray-400 text-white px-4 py-1 rounded text-sm cursor-not-allowed';
 
             // Hide download
             downloadDiv.classList.add('hidden');
