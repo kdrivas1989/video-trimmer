@@ -71,6 +71,10 @@
             <video id="previewVideo" class="w-full bg-black rounded" controls>
                 Your browser does not support video playback.
             </video>
+            <p id="videoError" class="hidden text-red-500 text-center mt-2 p-2 bg-red-50 rounded">
+                Video format not supported by browser. The video may use H.265/HEVC codec.
+                You can still set times manually and trim - the output will be playable.
+            </p>
             <div class="mt-4 space-y-4">
                 <div class="flex flex-wrap gap-6 items-center justify-center">
                     <div class="text-center">
@@ -464,6 +468,7 @@
             currentPreviewId = id;
             const video = videos[id];
             previewTitle.textContent = video.filename;
+            document.getElementById('videoError').classList.add('hidden');
             previewVideoEl.src = `/video/${id}`;
 
             // Show current start/end values
@@ -488,6 +493,14 @@
 
         previewVideoEl.addEventListener('timeupdate', () => {
             currentTimeDisplay.textContent = formatTime(previewVideoEl.currentTime);
+        });
+
+        previewVideoEl.addEventListener('error', () => {
+            document.getElementById('videoError').classList.remove('hidden');
+        });
+
+        previewVideoEl.addEventListener('loadeddata', () => {
+            document.getElementById('videoError').classList.add('hidden');
         });
 
         function setStartFromPlayer() {
