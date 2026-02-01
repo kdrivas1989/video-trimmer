@@ -54,9 +54,12 @@
         </div>
 
         <!-- Trim All Button -->
-        <div id="trimAllContainer" class="hidden mt-6 text-center">
+        <div id="trimAllContainer" class="hidden mt-6 text-center space-x-4">
             <button id="trimAllBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition">
                 Trim All Videos
+            </button>
+            <button onclick="exportCSV()" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-8 rounded-lg transition">
+                Export CSV
             </button>
         </div>
     </div>
@@ -398,6 +401,53 @@
                 await trimVideo(id);
             }
         });
+
+        function exportCSV() {
+            const rows = [['Filename', 'Start', 'End', 'Duration', 'Status']];
+
+            for (const id of Object.keys(videos)) {
+                const video = videos[id];
+                const nameInput = document.getElementById(`name-${id}`);
+                const startInput = document.getElementById(`start-${id}`);
+                const endInput = document.getElementById(`end-${id}`);
+                const statusDiv = document.getElementById(`status-${id}`);
+
+                const filename = nameInput ? nameInput.value : video.filename;
+                const start = startInput ? startInput.value : '0s';
+                const end = endInput ? endInput.value : video.duration_str;
+
+                let duration = '0.000s';
+                let status = 'Pending';
+
+                if (video.missedEntry) {
+                    duration = '0.000s';
+                    status = 'Missed Entry';
+                } else if (statusDiv && statusDiv.textContent.includes('Complete')) {
+                    const startSecs = parseTimestamp(start);
+                    const endSecs = parseTimestamp(end);
+                    duration = formatTime(endSecs - startSecs);
+                    status = 'Trimmed';
+                } else if (statusDiv) {
+                    status = statusDiv.textContent;
+                }
+
+                rows.push([filename, start, end, duration, status]);
+            }
+
+            const csvContent = rows.map(row =>
+                row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+            ).join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'video_trim_times.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
 
         // Preview functionality
         const previewModal = document.getElementById('previewModal');
