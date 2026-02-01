@@ -15,9 +15,12 @@ app = Flask(__name__)
 # Use appropriate directory for file storage based on environment
 def get_app_data_dir():
     """Get appropriate directory for app data storage."""
-    # Check if running in Docker/server environment
-    if os.environ.get('RENDER') or os.path.exists('/.dockerenv'):
-        # Use local directory for server/Docker
+    # Check if running on Render (native Python, not Docker)
+    if os.environ.get('RENDER'):
+        # Use /tmp for Render's native runtime (writable)
+        return Path('/tmp/video-trimmer')
+    elif os.path.exists('/.dockerenv'):
+        # Use /app for Docker
         return Path('/app')
     else:
         # Use user's home directory for desktop app
