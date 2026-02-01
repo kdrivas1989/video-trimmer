@@ -661,7 +661,7 @@
             if (!previewModal.classList.contains('active')) return;
             if (e.target.tagName === 'INPUT') return;
 
-            const FRAME_TIME = 1/30; // ~30fps, one frame ≈ 0.033 seconds
+            const FRAME_TIME = 1/100; // 0.01 seconds per step for fine control
 
             switch(e.key.toLowerCase()) {
                 case 'm':
