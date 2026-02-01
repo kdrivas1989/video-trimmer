@@ -63,80 +63,52 @@
 
     <!-- Video Preview Modal -->
     <div id="previewModal" class="modal">
-        <div class="bg-white rounded-lg p-4 max-w-4xl w-full mx-4 max-h-[90vh] overflow-auto">
-            <div class="flex justify-between items-center mb-4 gap-4">
-                <input type="text" id="previewFilename" class="flex-1 text-lg font-semibold text-gray-800 border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-blue-500" />
-                <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+        <div class="bg-white rounded-lg p-3 max-w-3xl w-full mx-2">
+            <div class="flex justify-between items-center mb-2 gap-2">
+                <input type="text" id="previewFilename" class="flex-1 text-sm font-semibold text-gray-800 border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-blue-500" />
+                <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-xl">&times;</button>
             </div>
-            <video id="previewVideo" class="w-full bg-black rounded" controls preload="auto">
+            <video id="previewVideo" class="w-full bg-black rounded max-h-[40vh]" controls preload="auto">
                 Your browser does not support video playback.
             </video>
-            <p id="videoError" class="hidden text-red-500 text-center mt-2 p-2 bg-red-50 rounded">
-                Video format not supported by browser. The video may use H.265/HEVC codec.
-                You can still set times manually and trim - the output will be playable.
+            <p id="videoError" class="hidden text-red-500 text-center text-xs mt-1 p-1 bg-red-50 rounded">
+                Video format not supported. You can still set times and trim.
             </p>
-            <div class="mt-4 space-y-4">
-                <div class="flex flex-wrap gap-6 items-center justify-center">
-                    <div class="text-center">
-                        <div class="text-xs text-gray-500 mb-1">CURRENT TIME</div>
-                        <div id="currentTime" class="font-mono text-2xl text-gray-800">00:00:00</div>
-                    </div>
+            <div class="mt-2 space-y-2">
+                <!-- Current time and trim duration inline -->
+                <div class="flex justify-center gap-6 text-sm">
+                    <div><span class="text-gray-500">Current:</span> <span id="currentTime" class="font-mono font-semibold">0.000s</span></div>
+                    <div><span class="text-gray-500">Duration:</span> <span id="previewTrimDuration" class="font-mono font-semibold text-blue-600">0.000s</span></div>
                 </div>
-                <div class="flex flex-wrap gap-4 items-start justify-center">
-                    <div class="text-center flex flex-col gap-2">
-                        <div>
-                            <button onclick="missedEntryFromPreview()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg transition font-semibold w-full">
-                                Missed Entry [M]
-                            </button>
-                            <div class="mt-1 text-xs text-gray-500">Sets duration to 0</div>
-                        </div>
-                        <div>
-                            <button onclick="canopyDownFromPreview()" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg transition font-semibold w-full">
-                                Canopy Down [C]
-                            </button>
-                            <div class="mt-1 text-xs text-gray-500">Sets duration to 0</div>
-                        </div>
+                <!-- All buttons in one row -->
+                <div class="flex flex-wrap gap-2 items-center justify-center">
+                    <button onclick="missedEntryFromPreview()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded text-sm font-medium">
+                        Missed [M]
+                    </button>
+                    <button onclick="canopyDownFromPreview()" class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1.5 rounded text-sm font-medium">
+                        Canopy [C]
+                    </button>
+                    <div class="text-center">
+                        <button onclick="setStartFromPlayer()" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded text-sm font-medium">
+                            Start [S]
+                        </button>
+                        <div class="text-xs text-gray-600"><span id="previewStart" class="font-mono">0.000s</span> <button onclick="jumpToStart()" class="text-green-600 hover:underline">go</button></div>
                     </div>
                     <div class="text-center">
-                        <button onclick="setStartFromPlayer()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition font-semibold">
-                            Set Start [S]
+                        <button onclick="setEndFromPlayer()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-sm font-medium">
+                            End [E]
                         </button>
-                        <div class="mt-1 text-sm text-gray-600">Start: <span id="previewStart" class="font-mono">0.000s</span></div>
-                        <button onclick="jumpToStart()" class="mt-1 text-xs text-green-600 hover:text-green-800 underline">Jump to Start</button>
+                        <div class="text-xs text-gray-600"><span id="previewEnd" class="font-mono">--.---s</span> <button onclick="jumpToEnd()" class="text-red-600 hover:underline">go</button></div>
                     </div>
-                    <div class="text-center">
-                        <button onclick="setEndFromPlayer()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg transition font-semibold">
-                            Set End [E]
-                        </button>
-                        <div class="mt-1 text-sm text-gray-600">End: <span id="previewEnd" class="font-mono">--.---s</span></div>
-                        <button onclick="jumpToEnd()" class="mt-1 text-xs text-red-600 hover:text-red-800 underline">Jump to End</button>
-                    </div>
-                    <div class="text-center">
-                        <button onclick="flagForReviewFromPreview()" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg transition font-semibold">
-                            Flag for Review [F]
-                        </button>
-                        <div class="mt-1 text-xs text-gray-500">Mark for later review</div>
-                    </div>
-                </div>
-                <!-- Trim duration display -->
-                <div class="text-center">
-                    <span class="text-sm text-gray-500">Trim Duration: </span>
-                    <span id="previewTrimDuration" class="font-mono text-lg font-semibold text-blue-600">0.000s</span>
-                </div>
-                <!-- Save button -->
-                <div class="text-center">
-                    <button onclick="saveTimesAndClose()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg transition font-semibold">
+                    <button onclick="flagForReviewFromPreview()" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded text-sm font-medium">
+                        Flag [F]
+                    </button>
+                    <button onclick="saveTimesAndClose()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm font-semibold">
                         Save & Trim
                     </button>
                 </div>
                 <div class="text-center text-xs text-gray-400">
-                    Keyboard: <span class="font-mono bg-gray-100 px-1 rounded">M</span> = Missed Entry,
-                    <span class="font-mono bg-gray-100 px-1 rounded">C</span> = Canopy Down,
-                    <span class="font-mono bg-gray-100 px-1 rounded">F</span> = Flag for Review,
-                    <span class="font-mono bg-gray-100 px-1 rounded">S</span> = Set Start,
-                    <span class="font-mono bg-gray-100 px-1 rounded">E</span> = Set End,
-                    <span class="font-mono bg-gray-100 px-1 rounded">Space</span> = Play/Pause,
-                    <span class="font-mono bg-gray-100 px-1 rounded">←</span> / <span class="font-mono bg-gray-100 px-1 rounded">→</span> = Frame step
+                    Keys: M/C/F/S/E, Space=Play, ←/→=Frame
                 </div>
             </div>
         </div>
