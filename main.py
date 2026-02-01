@@ -99,17 +99,17 @@ def upload_file():
 
 @app.route('/trim', methods=['POST'])
 def trim_video():
-    data = request.json
-    video_id = data.get('id')
-    start_time = data.get('start', '00:00:00')
-    end_time = data.get('end')
-
-    if video_id not in videos:
-        return jsonify({'error': 'Video not found'}), 404
-
-    video = videos[video_id]
-
     try:
+        data = request.json
+        video_id = data.get('id')
+        start_time = data.get('start', '0s')
+        end_time = data.get('end')
+
+        if video_id not in videos:
+            return jsonify({'error': 'Video not found'}), 404
+
+        video = videos[video_id]
+
         start = timestamp_to_seconds(start_time)
         end = timestamp_to_seconds(end_time) if end_time else video['duration']
 
@@ -127,6 +127,7 @@ def trim_video():
                 output_path,
                 codec="libx264",
                 audio_codec="aac",
+                preset="ultrafast",
                 logger=None
             )
 
