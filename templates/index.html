@@ -384,7 +384,7 @@
         }
 
         function exportCSV() {
-            const rows = [['Filename', 'Start', 'End', 'Duration', 'Status']];
+            const rows = [['Filename', 'Start', 'End', 'Duration', 'Status', 'G1 Judgement']];
 
             for (const id of Object.keys(videos)) {
                 const video = videos[id];
@@ -399,6 +399,7 @@
 
                 let duration = '0.000s';
                 let status = 'Pending';
+                let g1Judgement = '';
 
                 if (video.missedEntry) {
                     duration = '0.000s';
@@ -410,6 +411,7 @@
                         duration = formatTime(endSecs - startSecs) + '*';
                     }
                     status = 'Flagged for Review';
+                    g1Judgement = 'Review Required';
                 } else if (statusDiv && statusDiv.textContent.includes('Complete')) {
                     const startSecs = parseTimestamp(start);
                     const endSecs = parseTimestamp(end);
@@ -419,7 +421,7 @@
                     status = statusDiv.textContent;
                 }
 
-                rows.push([filename, start, end, duration, status]);
+                rows.push([filename, start, end, duration, status, g1Judgement]);
             }
 
             const csvContent = rows.map(row =>
