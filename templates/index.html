@@ -68,13 +68,18 @@
                 <input type="text" id="previewFilename" class="flex-1 text-sm font-semibold text-gray-800 border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-blue-500" />
                 <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-xl">&times;</button>
             </div>
-            <video id="previewVideo" class="w-full bg-black rounded max-h-[40vh]" controls preload="metadata" playsinline>
+            <video id="previewVideo" class="w-full bg-black rounded max-h-[40vh]" controls preload="none" playsinline webkit-playsinline>
                 Your browser does not support video playback.
             </video>
             <div id="videoError" class="hidden text-center text-xs mt-1 p-2 bg-orange-50 rounded">
                 <p id="previewStatusText" class="text-orange-600">
                     <span class="inline-block animate-spin mr-1">⟳</span> Generating playable preview...
                 </p>
+            </div>
+            <div class="text-center mt-2">
+                <button onclick="openVideoInNewTab()" class="text-xs text-blue-600 hover:underline">
+                    Video not loading? Open in new tab
+                </button>
             </div>
             <div class="mt-2 space-y-2">
                 <!-- Current time and trim duration inline -->
@@ -617,18 +622,12 @@
                 const statusRes = await fetch(`/preview/status/${id}`);
                 const status = await statusRes.json();
 
-                if (status.use_preview) {
-                    // Use transcoded preview (not browser playable, preview exists)
-                    previewVideoEl.src = `/preview/${id}`;
-                } else if (status.browser_playable) {
-                    // Original is playable
-                    previewVideoEl.src = `/video/${id}`;
-                } else if (status.exists) {
-                    // Preview exists, use it
-                    previewVideoEl.src = `/preview/${id}`;
+                // Add cache-busting timestamp
+                const ts = Date.now();
+                if (status.use_preview || status.exists) {
+                    previewVideoEl.src = `/preview/${id}?t=${ts}`;
                 } else {
-                    // Try original, will show transcode button if fails
-                    previewVideoEl.src = `/video/${id}`;
+                    previewVideoEl.src = `/video/${id}?t=${ts}`;
                 }
             } catch {
                 // Fallback to original video
@@ -636,6 +635,11 @@
             }
 
             previewVideoEl.load();
+
+            // Try to play after load
+            previewVideoEl.onloadeddata = () => {
+                previewVideoEl.play().catch(() => {});
+            };
 
             // Show current start/end values
             const startInput = document.getElementById(`start-${id}`);
@@ -674,6 +678,13 @@
             previewVideoEl.pause();
             previewVideoEl.src = '';
             currentPreviewId = null;
+        }
+
+        function openVideoInNewTab() {
+            if (currentPreviewId) {
+                const url = previewVideoEl.src || `/preview/${currentPreviewId}`;
+                window.open(url, '_blank');
+            }
         }
 
         previewVideoEl.addEventListener('timeupdate', () => {

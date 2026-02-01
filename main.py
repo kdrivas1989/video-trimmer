@@ -30,7 +30,7 @@ def get_app_data_dir():
 APP_DATA_DIR = get_app_data_dir()
 app.config['UPLOAD_FOLDER'] = str(APP_DATA_DIR / 'uploads')
 app.config['OUTPUT_FOLDER'] = str(APP_DATA_DIR / 'output')
-app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 * 1024  # 2GB max
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
 ALLOWED_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv', 'webm', 'mts'}
