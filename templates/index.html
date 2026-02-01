@@ -68,16 +68,16 @@
                 <input type="text" id="previewFilename" class="flex-1 text-sm font-semibold text-gray-800 border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-blue-500" />
                 <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700 text-xl">&times;</button>
             </div>
-            <div class="bg-gray-900 rounded p-8 text-center">
-                <button onclick="openVideoInNewTab()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-lg font-semibold">
-                    ▶ Watch Video in New Tab
-                </button>
-                <p class="text-gray-400 text-sm mt-2">Note the timestamps, then enter them below</p>
-            </div>
+            <video id="previewVideo" class="w-full bg-black rounded max-h-[50vh]" controls preload="auto" tabindex="-1">
+                Your browser does not support video playback.
+            </video>
             <div id="videoError" class="hidden text-center text-xs mt-1 p-2 bg-orange-50 rounded">
                 <p id="previewStatusText" class="text-orange-600">
                     <span class="inline-block animate-spin mr-1">⟳</span> Generating playable preview...
                 </p>
+                <button onclick="openVideoInNewTab()" class="mt-2 text-blue-600 hover:underline text-xs">
+                    Open in QuickTime instead
+                </button>
             </div>
             <div class="mt-2 space-y-2">
                 <!-- Current time and trim duration inline -->
@@ -605,16 +605,59 @@
         }
 
         async function previewVideo(id) {
-            // Open video in system video player (QuickTime)
+            currentPreviewId = id;
+            const video = videos[id];
+            const nameInput = document.getElementById(`name-${id}`);
+            previewFilename.value = nameInput ? nameInput.value : video.filename;
+            document.getElementById('videoError').classList.add('hidden');
+
+            // Get video element
+            const previewVideoEl = document.getElementById('previewVideo');
+            previewVideoEl.pause();
+            previewVideoEl.currentTime = 0;
+
+            // Determine video URL
+            let videoUrl;
             try {
-                const res = await fetch(`/open-video/${id}`);
-                const data = await res.json();
-                if (!data.success) {
-                    alert('Could not open video: ' + (data.error || 'Unknown error'));
-                }
-            } catch (e) {
-                alert('Error opening video: ' + e.message);
+                const statusRes = await fetch(`/preview/status/${id}`);
+                const status = await statusRes.json();
+                videoUrl = (status.exists) ? `/preview/${id}` : `/video/${id}`;
+            } catch {
+                videoUrl = `/video/${id}`;
             }
+
+            // Store URL for fallback
+            currentVideoUrl = videoUrl;
+
+            // Load video
+            previewVideoEl.src = videoUrl;
+            previewVideoEl.load();
+
+            // Show current start/end values
+            const startInput = document.getElementById(`start-${id}`);
+            const endInput = document.getElementById(`end-${id}`);
+            previewStartDisplay.textContent = startInput.value;
+            previewEndDisplay.textContent = endInput.value;
+
+            // Show modal
+            previewModal.classList.add('active');
+
+            // Fetch duration
+            fetch(`/duration/${id}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.duration > 0) {
+                        if (endInput.value === '0.000s' || endInput.value === '0s') {
+                            endInput.value = data.duration_str;
+                            previewEndDisplay.textContent = data.duration_str;
+                        }
+                        document.getElementById('videoDuration').textContent = data.duration_str;
+                        updateTrimDuration();
+                    }
+                })
+                .catch(() => {});
+
+            updateTrimDuration();
         }
 
         function closePreview() {
@@ -634,6 +677,23 @@
 
         previewVideoEl.addEventListener('timeupdate', () => {
             currentTimeDisplay.textContent = formatTime(previewVideoEl.currentTime);
+        });
+
+        // Prevent video element from capturing keys and remove focus on click
+        previewVideoEl.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }
+        });
+
+        // Remove focus from video immediately (so our keyboard shortcuts work)
+        previewVideoEl.addEventListener('click', () => {
+            setTimeout(() => previewVideoEl.blur(), 10);
+        });
+        previewVideoEl.addEventListener('focus', () => {
+            previewVideoEl.blur();
         });
 
         previewVideoEl.addEventListener('error', (e) => {
@@ -833,7 +893,7 @@
             }
         }
 
-        // Keyboard shortcuts
+        // Keyboard shortcuts (capture phase to intercept before video element)
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closePreview();
@@ -844,54 +904,80 @@
             if (!previewModal.classList.contains('active')) return;
             if (e.target.tagName === 'INPUT') return;
 
-            const FRAME_TIME = 1/100; // 0.01 seconds per step for fine control
+            // Always handle space and arrows even when video is focused
+            if (e.target.tagName === 'VIDEO' && (e.key === ' ' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }
 
-            switch(e.key.toLowerCase()) {
+            const FRAME_TIME = 1/30; // ~1 frame at 30fps
+
+            switch(e.key) {
                 case 'm':
+                case 'M':
                     e.preventDefault();
                     missedEntryFromPreview();
                     break;
                 case 'c':
+                case 'C':
                     e.preventDefault();
                     canopyDownFromPreview();
                     break;
                 case 'f':
+                case 'F':
                     e.preventDefault();
                     flagForReviewFromPreview();
                     break;
                 case 's':
+                case 'S':
                     e.preventDefault();
                     setStartFromPlayer();
                     break;
                 case 'e':
+                case 'E':
                     e.preventDefault();
                     setEndFromPlayer();
                     break;
                 case ' ':
                     e.preventDefault();
+                    e.stopPropagation();
                     if (previewVideoEl.paused || previewVideoEl.ended) {
                         previewVideoEl.play().catch(() => {});
                     } else {
                         previewVideoEl.pause();
+                        previewVideoEl.blur();
                     }
                     break;
-                case 'arrowleft':
+                case 'ArrowLeft':
                     e.preventDefault();
+                    e.stopPropagation();
                     previewVideoEl.pause();
-                    previewVideoEl.currentTime = Math.max(0, previewVideoEl.currentTime - FRAME_TIME);
+                    previewVideoEl.blur();
+                    const newTimeLeft = Math.max(0, previewVideoEl.currentTime - FRAME_TIME);
+                    previewVideoEl.currentTime = newTimeLeft;
+                    currentTimeDisplay.textContent = formatTime(newTimeLeft);
+                    currentTimeDisplay.classList.add('text-yellow-600');
+                    setTimeout(() => currentTimeDisplay.classList.remove('text-yellow-600'), 150);
                     break;
-                case 'arrowright':
+                case 'ArrowRight':
                     e.preventDefault();
+                    e.stopPropagation();
                     previewVideoEl.pause();
+                    previewVideoEl.blur();
                     const maxTime = previewVideoEl.duration || 9999;
-                    previewVideoEl.currentTime = Math.min(maxTime, previewVideoEl.currentTime + FRAME_TIME);
+                    const newTimeRight = Math.min(maxTime, previewVideoEl.currentTime + FRAME_TIME);
+                    previewVideoEl.currentTime = newTimeRight;
+                    currentTimeDisplay.textContent = formatTime(newTimeRight);
+                    currentTimeDisplay.classList.add('text-yellow-600');
+                    setTimeout(() => currentTimeDisplay.classList.remove('text-yellow-600'), 150);
                     break;
-                case 'enter':
+                case 'Enter':
                     e.preventDefault();
                     saveTimesOnly();
                     break;
             }
-        });
+        }, true); // Use capture phase to intercept before video controls
 
         // Close modal on backdrop click
         previewModal.addEventListener('click', (e) => {
