@@ -202,8 +202,13 @@
                     // Store start and end times
                     data.start_time = data.start_time || '0.000s';
                     data.end_time = data.end_time || data.duration_str;
+
+                    // Check for duplicate filename
+                    const isDuplicate = Object.values(videos).some(v => v.filename === data.filename);
+                    data.isDuplicate = isDuplicate;
+
                     videos[data.id] = data;
-                    addVideoCard(data.id, data.filename, data.duration, data.duration_str, false, data.browser_playable);
+                    addVideoCard(data.id, data.filename, data.duration, data.duration_str, false, data.browser_playable, isDuplicate);
                     updateTrimAllVisibility();
 
                     // If not browser playable, poll for transcoding completion
@@ -222,13 +227,18 @@
 
         const videoListContainer = document.getElementById('videoListContainer');
 
-        function addVideoCard(id, filename, duration, durationStr, loading, browserPlayable = true) {
+        function addVideoCard(id, filename, duration, durationStr, loading, browserPlayable = true, isDuplicate = false) {
             // Show the container
             videoListContainer.classList.remove('hidden');
 
             const card = document.createElement('div');
             card.id = `card-${id}`;
-            card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-blue-500';
+
+            if (isDuplicate) {
+                card.className = 'bg-red-100 rounded-lg p-4 shadow border-l-4 border-red-500';
+            } else {
+                card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-blue-500';
+            }
 
             if (loading) {
                 card.className += ' border-yellow-500';
@@ -308,6 +318,15 @@
             }
 
             videoList.appendChild(card);
+
+            // Set duplicate status if needed
+            if (isDuplicate && !loading) {
+                const statusDiv = document.getElementById(`status-${id}`);
+                if (statusDiv) {
+                    statusDiv.textContent = 'DUPLICATE FILE';
+                    statusDiv.className = 'text-sm text-red-600 font-bold';
+                }
+            }
         }
 
         function removeVideoCard(id) {
