@@ -446,7 +446,7 @@
 
                         statusDiv.textContent = `Complete - Duration: ${trimmedDuration}`;
                         statusDiv.className = 'text-sm text-green-600 font-medium';
-                        card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-green-500';
+                        card.className = 'bg-green-100 rounded-lg p-4 shadow border-l-4 border-green-500';
                     }, 500);
                 } else {
                     progressDiv.classList.add('hidden');
@@ -466,7 +466,7 @@
             // Update status
             statusDiv.textContent = 'Missed Entry - Duration: 0.000s';
             statusDiv.className = 'text-sm text-yellow-600 font-medium';
-            card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-yellow-500';
+            card.className = 'bg-green-100 rounded-lg p-4 shadow border-l-4 border-green-500';
 
             // Hide download
             downloadDiv.classList.add('hidden');
@@ -486,7 +486,7 @@
             // Update status
             statusDiv.textContent = 'Canopy Down - Duration: 0.000s';
             statusDiv.className = 'text-sm text-purple-600 font-medium';
-            card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-purple-500';
+            card.className = 'bg-green-100 rounded-lg p-4 shadow border-l-4 border-green-500';
 
             // Hide download
             downloadDiv.classList.add('hidden');
@@ -813,6 +813,7 @@
                 const startInput = document.getElementById(`start-${id}`);
                 const endInput = document.getElementById(`end-${id}`);
                 const statusDiv = document.getElementById(`status-${id}`);
+                const card = document.getElementById(`card-${id}`);
 
                 // Calculate and show duration
                 const startSecs = parseTimestamp(startInput.value);
@@ -821,6 +822,7 @@
 
                 statusDiv.textContent = `Times saved - Duration: ${duration}`;
                 statusDiv.className = 'text-sm text-blue-600 font-medium';
+                card.className = 'bg-green-100 rounded-lg p-4 shadow border-l-4 border-green-500';
 
                 // Store that times were saved
                 if (videos[id]) {
@@ -885,7 +887,7 @@
             // Update status
             statusDiv.textContent = `Flagged for Review${durationText}`;
             statusDiv.className = 'text-sm text-orange-600 font-medium';
-            card.className = 'bg-white rounded-lg p-4 shadow border-l-4 border-orange-500';
+            card.className = 'bg-green-100 rounded-lg p-4 shadow border-l-4 border-green-500';
 
             // Store flagged state
             if (videos[id]) {
