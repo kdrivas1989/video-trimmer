@@ -174,10 +174,19 @@
             handleFileSelect(e.dataTransfer.files);
         });
 
+        const MAX_FILE_SIZE_MB = 500; // Max file size in MB
+
         function handleFileSelect(files) {
             console.log('Files selected:', files.length);
             for (const file of files) {
-                console.log('Uploading:', file.name);
+                const fileSizeMB = file.size / (1024 * 1024);
+                console.log('File:', file.name, 'Size:', fileSizeMB.toFixed(1), 'MB');
+
+                if (fileSizeMB > MAX_FILE_SIZE_MB) {
+                    alert(`File "${file.name}" is too large (${fileSizeMB.toFixed(0)} MB).\n\nMax size: ${MAX_FILE_SIZE_MB} MB\n\nTip: Use a shorter clip or compress the video first.`);
+                    continue;
+                }
+
                 uploadFile(file);
             }
             fileInput.value = ''; // Reset so same file can be selected again
