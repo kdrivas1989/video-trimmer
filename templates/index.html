@@ -193,21 +193,44 @@
 
             // Format file size
             const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+            updateUploadProgress(tempId, 0, `0/${fileSizeMB} MB`);
+
+            // Fallback animation for iOS (progress events unreliable)
+            let fakeProgress = 0;
+            const progressInterval = setInterval(() => {
+                if (fakeProgress < 90) {
+                    fakeProgress += Math.random() * 5;
+                    fakeProgress = Math.min(fakeProgress, 90);
+                }
+            }, 500);
 
             try {
                 // Use XMLHttpRequest for upload progress
                 const data = await new Promise((resolve, reject) => {
                     const xhr = new XMLHttpRequest();
+                    let hasRealProgress = false;
 
                     xhr.upload.addEventListener('progress', (e) => {
                         if (e.lengthComputable) {
+                            hasRealProgress = true;
                             const percent = Math.round((e.loaded / e.total) * 100);
                             const loadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
                             updateUploadProgress(tempId, percent, `${loadedMB}/${fileSizeMB} MB`);
                         }
                     });
 
+                    // Fallback progress updater
+                    const fallbackInterval = setInterval(() => {
+                        if (!hasRealProgress && fakeProgress > 0) {
+                            updateUploadProgress(tempId, Math.round(fakeProgress), `Uploading ${fileSizeMB} MB...`);
+                        }
+                    }, 500);
+
                     xhr.addEventListener('load', () => {
+                        clearInterval(fallbackInterval);
+                        clearInterval(progressInterval);
+                        updateUploadProgress(tempId, 100, `${fileSizeMB}/${fileSizeMB} MB`);
+
                         if (xhr.status === 200) {
                             try {
                                 resolve(JSON.parse(xhr.responseText));
@@ -224,12 +247,22 @@
                         }
                     });
 
-                    xhr.addEventListener('error', () => reject(new Error('Network error')));
-                    xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
+                    xhr.addEventListener('error', () => {
+                        clearInterval(fallbackInterval);
+                        clearInterval(progressInterval);
+                        reject(new Error('Network error'));
+                    });
+                    xhr.addEventListener('abort', () => {
+                        clearInterval(fallbackInterval);
+                        clearInterval(progressInterval);
+                        reject(new Error('Upload cancelled'));
+                    });
 
                     xhr.open('POST', '/upload');
                     xhr.send(formData);
                 });
+
+                clearInterval(progressInterval);
 
                 // Remove placeholder and add real card
                 removeVideoCard(tempId);
