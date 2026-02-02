@@ -127,7 +127,7 @@
                         <div class="text-xs text-gray-600"><span id="previewEnd" class="font-mono">--.---s</span> <button onclick="jumpToEnd()" class="text-red-600 hover:underline">go</button></div>
                     </div>
                     <div class="text-center">
-                        <button onclick="flagForReviewFromPreview()" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded text-sm font-medium">
+                        <button id="flagForReviewBtn" onclick="flagForReviewFromPreview()" class="bg-gray-300 text-gray-500 px-4 py-1.5 rounded text-sm font-medium cursor-not-allowed" disabled>
                             Flag For Review [F]
                         </button>
                         <div class="text-xs text-gray-600">&nbsp;</div>
@@ -840,6 +840,9 @@
             previewFilename.value = nameInput ? nameInput.value : video.filename;
             document.getElementById('videoError').classList.add('hidden');
 
+            // Reset Flag for Review state
+            resetFlagForReviewState();
+
             // Get video element
             const previewVideoEl = document.getElementById('previewVideo');
             previewVideoEl.pause();
@@ -1006,6 +1009,27 @@
             document.getElementById('videoError').classList.add('hidden');
         });
 
+        // Track if start/end times have been set for Flag for Review
+        let startTimeSet = false;
+        let endTimeSet = false;
+
+        function updateFlagForReviewButton() {
+            const btn = document.getElementById('flagForReviewBtn');
+            if (startTimeSet && endTimeSet) {
+                btn.disabled = false;
+                btn.className = 'bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded text-sm font-medium';
+            } else {
+                btn.disabled = true;
+                btn.className = 'bg-gray-300 text-gray-500 px-4 py-1.5 rounded text-sm font-medium cursor-not-allowed';
+            }
+        }
+
+        function resetFlagForReviewState() {
+            startTimeSet = false;
+            endTimeSet = false;
+            updateFlagForReviewButton();
+        }
+
         // Audio feedback for start/end buttons
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playBeep(frequency, duration = 0.1) {
@@ -1035,6 +1059,10 @@
                 // Sound feedback - higher pitch for start
                 playBeep(880, 0.1);
 
+                // Enable Flag for Review if both times set
+                startTimeSet = true;
+                updateFlagForReviewButton();
+
                 updateTrimDuration();
             }
         }
@@ -1052,6 +1080,10 @@
 
                 // Sound feedback - lower pitch for end
                 playBeep(440, 0.15);
+
+                // Enable Flag for Review if both times set
+                endTimeSet = true;
+                updateFlagForReviewButton();
 
                 updateTrimDuration();
             }
@@ -1137,7 +1169,7 @@
         }
 
         function flagForReviewFromPreview() {
-            if (currentPreviewId) {
+            if (currentPreviewId && startTimeSet && endTimeSet) {
                 const id = currentPreviewId;
                 closePreview();
                 flagForReview(id);
