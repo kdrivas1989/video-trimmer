@@ -1,0 +1,40 @@
+Video Trimmer - Windows Installation
+====================================
+
+OPTION 1: Run with Python (Recommended for developers)
+------------------------------------------------------
+1. Install Python 3.11+ from https://python.org
+   - CHECK "Add Python to PATH" during install!
+
+2. Install FFmpeg:
+   - Download from https://ffmpeg.org/download.html
+   - Or use: winget install FFmpeg
+
+3. Open Command Prompt in this folder and run:
+   pip install -r requirements.txt
+
+4. Double-click VideoTrimmer.bat to start
+
+
+OPTION 2: Build Standalone EXE
+------------------------------
+1. Complete Option 1 steps first
+
+2. Double-click build_windows.bat
+
+3. Find VideoTrimmer.exe in the "dist" folder
+
+
+TROUBLESHOOTING
+---------------
+- "Python not found": Reinstall Python with "Add to PATH" checked
+- "FFmpeg not found": Install FFmpeg and add to PATH
+- Upload issues: Check that videos are in supported formats (MP4, AVI, MOV, MKV)
+
+
+REQUIREMENTS
+------------
+- Windows 10/11
+- Python 3.11+ (for Option 1)
+- FFmpeg (required for video processing)
+- ~500MB disk space for dependencies
