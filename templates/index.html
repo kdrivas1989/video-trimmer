@@ -123,19 +123,19 @@
                     </div>
                     <div class="text-center">
                         <button onclick="saveTimesOnly()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-1.5 rounded text-sm font-medium">
-                            Save Times
+                            Save Times [Enter]
                         </button>
                         <div class="text-xs text-gray-600">&nbsp;</div>
                     </div>
                     <div class="text-center">
                         <button onclick="saveTimesAndClose()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm font-semibold">
-                            Save & Trim
+                            Save & Trim [T]
                         </button>
                         <div class="text-xs text-gray-600">&nbsp;</div>
                     </div>
                 </div>
                 <div class="text-center text-xs text-gray-400">
-                    Keys: M/C/F/S/E, Space=Play, ←/→=Frame, Enter=Save Times
+                    Keys: M/C/F/S/E/T, Space=Play, ←/→=Frame, Enter=Save Times
                 </div>
             </div>
         </div>
@@ -792,6 +792,21 @@
             document.getElementById('videoError').classList.add('hidden');
         });
 
+        // Audio feedback for start/end buttons
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playBeep(frequency, duration = 0.1) {
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'sine';
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + duration);
+        }
+
         function setStartFromPlayer() {
             if (currentPreviewId) {
                 const time = formatTime(previewVideoEl.currentTime);
@@ -802,6 +817,9 @@
                 // Flash feedback
                 previewStartDisplay.classList.add('text-green-600', 'font-bold');
                 setTimeout(() => previewStartDisplay.classList.remove('text-green-600', 'font-bold'), 300);
+
+                // Sound feedback - higher pitch for start
+                playBeep(880, 0.1);
 
                 updateTrimDuration();
             }
@@ -817,6 +835,9 @@
                 // Flash feedback
                 previewEndDisplay.classList.add('text-red-600', 'font-bold');
                 setTimeout(() => previewEndDisplay.classList.remove('text-red-600', 'font-bold'), 300);
+
+                // Sound feedback - lower pitch for end
+                playBeep(440, 0.15);
 
                 updateTrimDuration();
             }
@@ -982,6 +1003,11 @@
                 case 'E':
                     e.preventDefault();
                     setEndFromPlayer();
+                    break;
+                case 't':
+                case 'T':
+                    e.preventDefault();
+                    saveTimesAndClose();
                     break;
                 case ' ':
                     e.preventDefault();
