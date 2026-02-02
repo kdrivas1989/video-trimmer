@@ -14,6 +14,8 @@
     <link rel="apple-touch-icon" href="/static/icon-192.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.7/dist/umd/ffmpeg.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/util.js"></script>
     <style>
         .dropzone {
             border: 2px dashed #cbd5e1;
@@ -175,21 +177,123 @@
         });
 
         const MAX_FILE_SIZE_MB = 500; // Max file size in MB
+        const COMPRESS_THRESHOLD_MB = 100; // Compress files larger than this
+        let ffmpeg = null;
+        let ffmpegLoaded = false;
 
-        function handleFileSelect(files) {
+        async function loadFFmpeg() {
+            if (ffmpegLoaded) return true;
+            try {
+                const { FFmpeg } = FFmpegWASM;
+                ffmpeg = new FFmpeg();
+                ffmpeg.on('progress', ({ progress }) => {
+                    const percent = Math.round(progress * 100);
+                    updateCompressProgress(percent);
+                });
+                await ffmpeg.load({
+                    coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
+                });
+                ffmpegLoaded = true;
+                return true;
+            } catch (e) {
+                console.error('FFmpeg load failed:', e);
+                return false;
+            }
+        }
+
+        let currentCompressId = null;
+        function updateCompressProgress(percent) {
+            if (currentCompressId) {
+                updateUploadProgress(currentCompressId, percent, `Compressing... ${percent}%`);
+            }
+        }
+
+        async function compressVideo(file) {
+            const { fetchFile } = FFmpegUtil;
+            const inputName = 'input' + file.name.substring(file.name.lastIndexOf('.'));
+            const outputName = 'compressed.mp4';
+
+            await ffmpeg.writeFile(inputName, await fetchFile(file));
+
+            // Compress to 720p, lower bitrate
+            await ffmpeg.exec([
+                '-i', inputName,
+                '-vf', 'scale=-2:720',
+                '-c:v', 'libx264',
+                '-preset', 'fast',
+                '-crf', '28',
+                '-c:a', 'aac',
+                '-b:a', '128k',
+                outputName
+            ]);
+
+            const data = await ffmpeg.readFile(outputName);
+            await ffmpeg.deleteFile(inputName);
+            await ffmpeg.deleteFile(outputName);
+
+            return new File([data.buffer], file.name.replace(/\.[^/.]+$/, '_compressed.mp4'), { type: 'video/mp4' });
+        }
+
+        async function handleFileSelect(files) {
             console.log('Files selected:', files.length);
             for (const file of files) {
                 const fileSizeMB = file.size / (1024 * 1024);
                 console.log('File:', file.name, 'Size:', fileSizeMB.toFixed(1), 'MB');
 
                 if (fileSizeMB > MAX_FILE_SIZE_MB) {
-                    alert(`File "${file.name}" is too large (${fileSizeMB.toFixed(0)} MB).\n\nMax size: ${MAX_FILE_SIZE_MB} MB\n\nTip: Use a shorter clip or compress the video first.`);
+                    const shouldCompress = confirm(`File "${file.name}" is ${fileSizeMB.toFixed(0)} MB.\n\nCompress before uploading?\n\n(This may take a few minutes)`);
+                    if (shouldCompress) {
+                        await uploadFileWithCompression(file);
+                    }
                     continue;
+                }
+
+                if (fileSizeMB > COMPRESS_THRESHOLD_MB) {
+                    const shouldCompress = confirm(`File is ${fileSizeMB.toFixed(0)} MB.\n\nCompress for faster upload?\n\n(Recommended for mobile)`);
+                    if (shouldCompress) {
+                        await uploadFileWithCompression(file);
+                        continue;
+                    }
                 }
 
                 uploadFile(file);
             }
             fileInput.value = ''; // Reset so same file can be selected again
+        }
+
+        async function uploadFileWithCompression(file) {
+            const tempId = 'temp-' + Date.now();
+            currentCompressId = tempId;
+            addVideoCard(tempId, file.name, 0, '00:00:00', true);
+            updateUploadProgress(tempId, 0, 'Loading compressor...');
+
+            try {
+                const loaded = await loadFFmpeg();
+                if (!loaded) {
+                    alert('Failed to load video compressor. Uploading original file.');
+                    currentCompressId = null;
+                    removeVideoCard(tempId);
+                    uploadFile(file);
+                    return;
+                }
+
+                updateUploadProgress(tempId, 0, 'Compressing...');
+                const compressedFile = await compressVideo(file);
+                currentCompressId = null;
+
+                const originalMB = (file.size / (1024 * 1024)).toFixed(1);
+                const compressedMB = (compressedFile.size / (1024 * 1024)).toFixed(1);
+                console.log(`Compressed: ${originalMB} MB → ${compressedMB} MB`);
+
+                removeVideoCard(tempId);
+                uploadFile(compressedFile);
+            } catch (e) {
+                console.error('Compression failed:', e);
+                alert('Compression failed: ' + e.message + '\n\nUploading original file.');
+                currentCompressId = null;
+                removeVideoCard(tempId);
+                uploadFile(file);
+            }
         }
 
         async function uploadFile(file) {
