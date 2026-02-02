@@ -521,7 +521,15 @@
         }
 
         function exportCSV() {
-            const rows = [['Filename', 'Start', 'End', 'Duration', 'Status', 'G1 Judgement']];
+            // Ask for round number
+            const roundNum = prompt('Enter round number:');
+            if (roundNum === null) return; // User cancelled
+
+            const rows = [
+                [`Round #${roundNum}`],
+                [],
+                ['Filename', 'Start', 'End', 'Duration', 'Status', 'G1 Judgement']
+            ];
 
             for (const id of Object.keys(videos)) {
                 const video = videos[id];
@@ -552,12 +560,12 @@
                     }
                     status = 'Flagged for Review';
                     g1Judgement = '';
-                } else if (statusDiv && statusDiv.textContent.includes('Complete')) {
+                } else if (statusDiv && (statusDiv.textContent.includes('Complete') || statusDiv.textContent.includes('Times saved'))) {
                     const startSecs = parseTimestamp(start);
                     const endSecs = parseTimestamp(end);
                     duration = formatTime(endSecs - startSecs);
-                    status = 'Trimmed';
-                } else if (statusDiv) {
+                    status = '';
+                } else if (statusDiv && statusDiv.textContent) {
                     status = statusDiv.textContent;
                 }
 
@@ -572,7 +580,7 @@
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.setAttribute('href', url);
-            link.setAttribute('download', 'video_trim_times.csv');
+            link.setAttribute('download', `round_${roundNum}_trim_times.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
