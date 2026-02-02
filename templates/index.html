@@ -580,7 +580,7 @@
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.setAttribute('href', url);
-            link.setAttribute('download', `round_${roundNum}_trim_times.csv`);
+            link.setAttribute('download', `Round ${roundNum}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
